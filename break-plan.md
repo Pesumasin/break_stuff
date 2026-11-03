@@ -55,7 +55,7 @@ No visual reference image exists in the repo. **[A]** The design bible (§13) is
 5. Buy tools and upgrades at a shop counter (in hub and arena). Feel the difference immediately.
 6. Final phase collapses → results card (time, stars, earnings, unlock) → Replay or Back to HQ.
 
-Readability rules: money, bag (count/cap), equipped tool, and objective (phase k/N plus progress bar) are always visible. A target block under the crosshair gets a subtle outline (SelectionBox), turning red if the tool tier is too low.
+Readability rules: money, bag (count/cap), equipped tool, and objective (phase k/N plus progress bar) are always visible. In missions, a timer pill (clock icon, `m:ss`) shows elapsed time, since stars depend on it. A target block under the crosshair gets a subtle outline (SelectionBox), turning red if the tool tier is too low. **Area tools preview their full hit area**: every cell the next hit will reach is outlined in orange (§6.5).
 
 ---
 
@@ -181,7 +181,7 @@ Every C→S handler: `typeof` check all args, reject NaN/inf vectors, per-player
 - Blueprints (`Shared/Blueprints/<id>`) are pure functions returning `{size, sections={ids in collapse order}, cells={ {x,y,z,mat,section} ... }}`. They are built from helpers in a `BlueprintKit` util: `box`, `hollowBox(wallThickness)`, `floor`, `gableRoof`, `windowRow`, `door`, `fillMaterial(predicate, mat)`. Hand-typed cell lists are forbidden: compose helpers. **[D]** Structures are made from data, never hand-placed parts, so they can be rebuilt, replayed and loaded in mission servers.
 
 ### 5.2 Block parts
-Part properties: `Anchored=true, CanCollide=true, CanTouch=false, CanQuery=true, CastShadow=` config `FX.blockShadows` (default true, set false for structures >3000 blocks), `Material=SmoothPlastic` (or per-material override), `Color = material.color` with deterministic ±5% brightness jitter from a hash of the cell index (voxel richness at zero cost), `Name="B"`, attribute `M` = matId (uint) for client FX and prediction. Parent: `Workspace.Missions.<instanceId>.Structure`.
+Part properties: `Anchored=true, CanCollide=true, CanTouch=false, CanQuery=true, CastShadow=` config `FX.blockShadows` (default true, set false for structures >3000 blocks), `Material=SmoothPlastic` (or per-material override), `Color = material.color` with deterministic brightness variation = **patterned noise** `math.noise(x*0.18, y*0.18, z*0.18 + seed)` → ±8% (darker/lighter blotches spanning neighbouring blocks, like stains on a wall) plus ±2% per-block hash jitter (voxel richness at zero cost, no textures), `Name="B"`, attribute `M` = matId (uint) for client FX and prediction. Parent: `Workspace.Missions.<instanceId>.Structure`.
 
 Spawning: batched at ≤300 parts per Heartbeat, **bottom layer first**, so construction reads as the structure "rising" (with a client dust puff per layer row; optional). Never `Instance.new` thousands of parts in one frame.
 
@@ -224,13 +224,13 @@ Breaking under collapse lock: a section in its 1 s collapse warning is `locked` 
 ### 5.5 Replication & FX batching
 - Part destruction replicates automatically. **Do not** also replicate per-block state via attributes.
 - `BlockFX` is flushed once per Heartbeat per instance, `FireClient` to each **member** (non-members get nothing). Buffer records, 8 bytes each: `x:u8 y:u8 z:u8 (cell coords)`, `mat:u8`, `kind:u8 (0=hit,1=break,2=tooTough)`, `hpFrac:u8`, `attackerSlot:u8 (member index 1–4)`, `pad:u8`, plus a header with the structure origin. `Util.Packer` owns the format plus a self-test.
-- Hits on multi-hit blocks: the client darkens the block colour by `(1-hpFrac)*0.35` and adds a crack Texture once the crack asset is approved (placeholder: darkening only).
+- **Cracks (standard damage look)**: hits on multi-hit blocks show crack stages 1–3 (stage = `ceil((1-hpFrac)*3)`). Each stage puts a client-only dark crack `Texture` on all 6 faces (one shared asset per stage, only on damaged blocks, removed on break) and darkens the colour by `stage*0.08`. Until the user supplies the crack images (required asset, P1 batch), darkening alone is the placeholder.
 - Budget: ≤ 2 KB/s per client in normal play; rocket bursts may spike to ~1 KB per event. Profile in P6.
 
 ### 5.6 Client feel & prediction
 - On attack input the client immediately plays: swing anim, hit spark at `hitPos`, hit sound. It does not wait for the server.
 - **Optimistic break** (P6): if `material.hp` (or the last known hp from BlockFX) ≤ predicted damage, AND the tier is OK, AND the local `BagCount < BagCap`, then hide the part locally (`LocalTransparencyModifier=1`, set `CanQuery=false` locally) and play the full break FX right away. Record it as pending. If no server break record arrives within 0.6 s, restore the part (rare). Server break records for already-predicted cells skip FX.
-- Debris (FXController): **client-only** pooled cube Parts (pool of 150, size 0.8–1.6, material colour, `CollisionGroup="Debris"`, which collides with world/structure only, not players or other debris). Per break: 4–6 cubes with outward random impulse, spin; lifetime 1.2–2.0 s; shrink tween then return to pool. If the pool is exhausted: particles only. Dust: one pooled `ParticleEmitter` per material colour at a reused attachment, `:Emit(n)` with built-in texture `rbxasset://textures/particles/smoke_main.dds`.
+- Debris (FXController): **client-only** pooled cube Parts (pool of 200, size 0.8–1.6, material colour, `CollisionGroup="Debris"`, which collides with world/structure and other debris, not players). Per break: 4–6 cubes with outward random impulse, spin. They **settle and linger as rubble for ~3 s** (random 2.5–3.5 s), then shrink over 0.3 s and return to the pool. If the pool is exhausted, recycle the oldest pieces first, then fall back to particles only. Dust: one pooled `ParticleEmitter` per material colour at a reused attachment, `:Emit(n)` with built-in texture `rbxasset://textures/particles/smoke_main.dds`.
 - Camera: break shake 0.15 amplitude/0.12 s; collapse shake 1.0/1.2 s; FOV kick +3° on heavy hits. Shakes are additive with a cap. Respect a settings toggle (P6).
 - Sounds: pooled `Sound` objects per sound key (max 6 concurrent per key, random pitch 0.92–1.08). Missing asset ids = silent (§14).
 
@@ -299,6 +299,8 @@ Server: on a valid fire, compute the path by **kinematic stepping raycasts** (sp
 - Client viewmodel: a Model (blocky arms + tool built from Parts, `Assets/ToolModels/<id>`) parented to the camera and positioned each RenderStepped with **procedural spring animation**: idle bob, walk bob, mouse sway, swing curves per tool (wind-up / strike / recover = 0.06/0.10/0.18 s for light tools, 0.25/0.12/0.3 for sledge), recoil for rocket, vibration for chainsaw/laser. No animation assets are required.
 - Other players (P8): server welds a copy of the tool model to the character's right hand on `EquipTool`. Swings are shown with a simple client-side Motor6D C0 tween driven by the `attackerSlot` in BlockFX. Real animation assets are optional polish (§14).
 - Crosshair: small centre dot plus a circular cooldown ring.
+- **AoE preview** (ToolController, client-only): for `sphere`/`cut`/`pierce` tools, each RenderStepped (throttled to 20 Hz) compute the hit set with the same `Util.Grid` function the server uses, and outline those cells with pooled `SelectionBox`es (orange `#FF8A00`, thickness 0.05, max 40; the centre cell gets a thicker box). Rocket previews the blast at the crosshair ray's impact point. Cells the tool can't damage (tier too low) get red boxes.
+- **Mouse lock / unlock**: first-person locks the mouse by default. Opening any modal (shop, mission board, results, squad) unlocks it automatically, and closing restores the lock. **V** toggles unlock by hand (via InputController action `ToggleMouse`). While unlocked, attacks are disabled and the camera doesn't turn. A HUD hint pill bottom-left shows `[V] Unlock mouse` / `[V] Lock mouse`.
 
 ---
 
@@ -474,13 +476,13 @@ All of §6.3, plus a membership check on every structure op. A player can only t
 
 **Environment**: parts-based chunky terrain (no smooth Terrain), plateau steps of 4 studs, blocky trees (brown trunk plus 2–3 green cubes), fences, cones, barrels. Lighting: `Lighting.Technology=ShadowMap`, bright midday, Atmosphere density 0.25 with a light blue haze, ColorCorrection saturation +0.15 / contrast +0.05, subtle Bloom (intensity 0.4, threshold 0.95). No realism, no grime.
 
-**Structures/blocks**: 4-stud cube grid, SmoothPlastic, ±5% brightness jitter, readable silhouettes (gable roofs, big windows, chimneys, flags). Details are made of blocks too (a door = 1×2 cells of a different colour). Every structure has at least 3 materials for visual and economic variety.
+**Structures/blocks**: 4-stud cube grid, SmoothPlastic, patterned noise colour blotches plus slight per-block jitter (§5.2), dark crack overlays on damaged blocks, rubble cubes that settle briefly, readable silhouettes (gable roofs, big windows, chimneys, flags). Details are made of blocks too (a door = 1×2 cells of a different colour). Every structure has at least 3 materials for visual and economic variety.
 
 **Equipment**: oversized, toy-like proportions (head 1.5× realistic), 2–3 colours each, bold primary accent (pickaxe: wood handle, grey head with yellow band; sledge: red head; chainsaw: orange body; rocket: green tube with yellow stripes; laser: white/cyan sci-fi). Built from Parts first. Meshes only via §14.
 
 **Machines**: Crusher = big, hazard-striped, exaggerated moving parts. All machines show their function through motion (jaws, pistons, conveyors).
 
-**UI**: Font `Enum.Font.FredokaOne` (headings/numbers), `GothamBold` (small text). Rounded panels (UICorner 12), thick ink UIStroke (3 px), drop-shadow offset frame, bright header bands. Sizes in Scale plus `UIAspectRatioConstraint`. A `UIScale` per ScreenGui (mobile later). Buttons: 3D-pressed look (darker bottom band), hover scale 1.05, click scale 0.95. Icons: flat, chunky, ink-outlined (placeholders = coloured squares with text until the user supplies icons). Hierarchy: money top-left (big), objective top-centre, bag bottom-centre above the hotbar, toasts mid-top, shop/board as centre modals.
+**UI**: Font `Enum.Font.FredokaOne` (headings/numbers), `GothamBold` (small text). Rounded panels (UICorner 12), thick ink UIStroke (3 px), drop-shadow offset frame, bright header bands. Sizes in Scale plus `UIAspectRatioConstraint`. A `UIScale` per ScreenGui (mobile later). Buttons: 3D-pressed look (darker bottom band), hover scale 1.05, click scale 0.95. Icons: flat, chunky, ink-outlined (placeholders = coloured squares with text until the user supplies icons). Hierarchy: money top-left (big), objective top-centre, timer pill top-right (missions only), bag pill bottom-centre above the hotbar, mouse-lock hint bottom-left, toasts mid-top, shop/board as centre modals.
 
 **Animation timing**: snappy anticipation → strike → overshoot. UI pops `Back` easing 0.18 s in / 0.12 s out. Number tickers 0.4 s. World FX hits < 0.1 s response, breaks 0.2 s, collapse 1 s warning + 3 s show.
 
@@ -520,7 +522,7 @@ The user personally chooses every external asset (models, meshes, textures, deca
 7. Do not use MCP `search_asset`, `insert_asset` or `generate_*` (mesh/texture/material/scene/model generation) to choose final assets unless the user explicitly asks for that specific item. Licensing: prefer Roblox-uploaded or Creator-Store assets the user confirms are usable.
 8. Tasks needing no external assets → do not ask.
 
-Expected batches (ask only when the feature is ready): P1 hit/break SFX per material; P2 crusher/coin/UI SFX; P4 tool swing SFX + optional icons; P5 collapse rumble, mission music, victory jingle; P6 crack texture, optional meshes for tools/crusher; later per phase.
+Expected batches (ask only when the feature is ready): P1 hit/break SFX per material + crack overlay images (3 stages, required); P2 crusher/coin/UI SFX; P4 tool swing SFX + optional icons; P5 collapse rumble, mission music, victory jingle, optional clock icon; P6 optional meshes for tools/crusher; later per phase.
 
 ---
 
@@ -552,17 +554,17 @@ Each phase leaves the game playable. Assets: request only when the phase's featu
 ### P0 — Foundation & MCP check
 - Objective: verified MCP connection, project skeleton, first-person movement in a test area.
 - **User action first**: publish the place to Roblox and turn on Team Create (Home → Collaborate / File → Publish). Sonnet gives the steps and waits for confirmation, then records it in §20.
-- Features: §4.2 folders/bootstraps; Config modules with MVP data; Remotes created; Util.Grid, Util.Format, Util.Packer + Tests; collision groups (`Debris`, `Players`); first-person lock (`CameraMode=LockFirstPerson`), crosshair; basic Lighting per §13; a flat test plate.
+- Features: §4.2 folders/bootstraps; Config modules with MVP data; Remotes created; Util.Grid, Util.Format, Util.Packer + Tests; collision groups (`Debris`, `Players`); first-person lock (`CameraMode=LockFirstPerson`), crosshair, V mouse lock/unlock toggle plus hint pill (§6.5); basic Lighting per §13; a flat test plate.
 - Depends: —. Assets: none.
 - Test: self-tests pass; playtest shows first-person and crosshair, no console errors.
 - DoD: skeleton exists exactly per §4.2; Studio state clean; §19 updated.
 
 ### P1 — Destruction core
 - Objective: break blocks with hands; it feels good.
-- Features: StructureService (grid, batched rising spawn, applyDamage/breakCell, BlockFX batching); `TestHut` blueprint (~150 blocks) plus BlueprintKit; a temporary dev MissionInstance auto-created for the player at the test plate; ToolService validation (§6.3) for hands; ToolController targeting, outline, cooldown ring; viewmodel arms with punch anim; FXController debris pool, dust, shake; hit/break SFX slots (silent).
+- Features: StructureService (grid, batched rising spawn, applyDamage/breakCell, BlockFX batching); `TestHut` blueprint (~150 blocks) plus BlueprintKit; a temporary dev MissionInstance auto-created for the player at the test plate; ToolService validation (§6.3) for hands; ToolController targeting, outline, cooldown ring; viewmodel arms with punch anim; FXController debris pool (3 s rubble), dust, shake; crack stages (darkening placeholder); patterned noise block colours; hit/break SFX and crack-image slots (empty).
 - Depends: P0.
 - Test: break all blocks; spam-click doesn't exceed the cooldown (server log counter); invalid remote args (fire from command bar) are dropped; ~150 breaks leave no leaked debris parts (pool count stable).
-- DoD: breaking feels responsive; no errors; then **ask asset batch: hit/break sounds per material**.
+- DoD: breaking feels responsive; no errors; then **ask asset batch: hit/break sounds per material, crack overlay images**.
 
 ### P2 — Bag, Crusher, money, HUD
 - Features: PlayerStateService (attributes, bag ops); D3 full-bag clamp, toast and guide beam; Crusher placeholder model plus sell logic and SellFX; HUD (money, bag bar, toasts).
@@ -577,19 +579,19 @@ Each phase leaves the game playable. Assets: request only when the phase's featu
 - DoD: data survives sessions; no saves per hit (count saves in log).
 
 ### P4 — Tools, shop, upgrades
-- Features: Config for hands/pickaxe/sledge plus upgrades/capacity; ToolStats; hotbar (1–3, wheel) plus EquipTool; viewmodels for pickaxe/sledge from Parts with swing anims; sledge sphere AoE; Shop UI (tools tab, upgrades tab, capacity), ShopCounter prompt; EconomyService purchases.
+- Features: Config for hands/pickaxe/sledge plus upgrades/capacity; ToolStats; hotbar (1–3, wheel) plus EquipTool; viewmodels for pickaxe/sledge from Parts with swing anims; sledge sphere AoE plus AoE preview (§6.5); shop opening auto-unlocks the mouse; Shop UI (tools tab, upgrades tab, capacity), ShopCounter prompt; EconomyService purchases.
 - Depends: P3.
 - Test: buy each item; insufficient funds rejected; cannot buy owned; sledge AoE breaks the expected cells exactly once and rewards are correct; upgrade effects measurable (cooldown/radius); data persists.
 - DoD: three distinct-feeling tools. Ask batch: swing SFX per tool, optional tool icons.
 
 ### P5 — Hub, mission flow, phased collapse (= MVP)
-- Features: hub layout §9.1 and arena §9.2; Mission Board UI; MissionService (instance lifecycle, StartMission/Leave/Exit, fade travel); `Shed` blueprint (2 sections); phase progress, warn, collapse (§8.1), CollapseFX client show; phase bonus; results card, stars, unlock, replay rebuild; objective HUD; remove the dev auto-instance from P1.
+- Features: hub layout §9.1 and arena §9.2; Mission Board UI; MissionService (instance lifecycle, StartMission/Leave/Exit, fade travel); `Shed` blueprint (2 sections); phase progress, warn, collapse (§8.1), CollapseFX client show; phase bonus; results card, stars, unlock, replay rebuild; objective HUD plus mission timer pill; remove the dev auto-instance from P1.
 - Depends: P4.
 - Test: full run hub → mission → 2 collapses → results → replay → hub; progress math matches the self-test; leaving mid-mission cleans up the instance and parts; data records stars/bestTime.
 - DoD: **MVP complete per §15**, a 15-minute clean playtest by Sonnet plus a user playtest request. Ask batch: collapse rumble, victory jingle, hub/mission music, ambient.
 
 ### P6 — Feel, performance, balance
-- Features: optimistic break prediction §5.6; crack darkening (+crack texture if supplied); FOV kick; shake setting toggle; stress blueprints; profiling; surface-only spawning if 5k solid > budget; economy pacing check vs §7.4; DEBUG money/min logging.
+- Features: optimistic break prediction §5.6; FOV kick; shake setting toggle; stress blueprints; profiling; surface-only spawning if 5k solid > budget; economy pacing check vs §7.4; DEBUG money/min logging.
 - Test: perf numbers recorded; pacing within ±30% of targets or values adjusted and logged.
 - DoD: 60 FPS on the stress test on the dev machine; feels instant at 150 ms simulated latency (Studio network sim if available). Ask: optional meshes for tools/crusher.
 
@@ -662,6 +664,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
 - 2026-11-03 — Plan created (Opus). Interview decisions D1–D11 recorded in §2.
+- 2026-11-04 — From the user's reference screenshots: mouse unlock (V), AoE preview, 3 s lingering rubble, crack overlays as the standard damage look, patterned noise colours, HUD timer pill.
 
 ### Ideas/backlog (not scheduled)
 - Hungry Rock Monster crusher variant (P12 cosmetic).
