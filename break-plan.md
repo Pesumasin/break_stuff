@@ -454,7 +454,8 @@ All of §6.3, plus a membership check on every structure op. A player can only t
   { v=1, money=0, bag={}, capLevel=1,
     tools={ hands={owned=true, up={0,0}} }, equipped="hands",
     missions={ m01_shed={done=false, bestTime=nil, stars=0} },
-    stats={ blocks=0, earned=0, playTime=0 }, settings={ shake=true },
+    stats={ blocks=0, earned=0, playTime=0 }, tutorialStep=0, badges={},
+    settings={ music=0.5, sfx=0.8, shake=true, debris="normal", aoePreview=true },
     receipts={} }      -- later, monetization idempotency
   ```
 - Sanitize on load: clamp numbers to ≥0 and finite, drop unknown tool/mission ids, ensure `hands` is owned, `equipped` is owned, `capLevel` is in range, bag counts are integers ≤ cap.
@@ -545,7 +546,7 @@ Expected batches (ask only when the feature is ready): P1 hit/break SFX per mate
 ## 15. MVP definition (end of P5) **[D]**
 Included: first-person camera and viewmodel; hub plus 1 arena; mission 1 (Grandma's Shed, ~350 blocks, 2 phases with collapse, completion, replay, stars); materials plank/roof/glass/brick; tools hands/pickaxe/sledge with 2 upgrade tracks each; bag with capacity upgrades; one Crusher model (in hub and arena); shop UI; mission board UI; HUD (money, bag, objective, hotbar, toasts); server-validated everything; DataStore persistence; debris/dust/shake FX; asset slots registered (sounds as the user supplies them).
 
-Excluded until later: other tools, materials and missions; co-op; reserved servers; mobile; monetization; vehicles; settings menu beyond the shake toggle; leaderboards; daily jobs; rebirth.
+Excluded until later: other tools, materials and missions; co-op; reserved servers; mobile; monetization; vehicles; tutorial and settings menu (P6); badges, leaderboards, analytics (P12); daily jobs; rebirth.
 
 **Scope guard**: if a task is not in the current phase, do not build it. Note ideas in §20 under "Ideas/backlog" instead.
 
@@ -607,9 +608,17 @@ Each phase leaves the game playable. Assets: request only when the phase's featu
 - DoD: **MVP complete per §15**, a 15-minute clean playtest by Sonnet plus a user playtest request. Ask batch: collapse rumble, victory jingle, hub/mission music, ambient.
 
 ### P6 — Feel, performance, balance
-- Features: optimistic break prediction §5.6; FOV kick; shake setting toggle; stress blueprints; profiling; surface-only spawning if 5k solid > budget; economy pacing check vs §7.4; DEBUG money/min logging.
+- Features: optimistic break prediction §5.6; FOV kick; **first-time guidance** and **settings menu** (both below); stress blueprints; profiling; surface-only spawning if 5k solid > budget; economy pacing check vs §7.4; DEBUG money/min logging.
 - Test: perf numbers recorded; pacing within ±30% of targets or values adjusted and logged.
-- DoD: 60 FPS on the stress test on the dev machine; feels instant at 150 ms simulated latency (Studio network sim if available). Ask: optional meshes for tools/crusher.
+- **First-time guidance (FTUE)**: runs once for new players (`tutorialStep` in save data, skippable, never repeats after completion). Steps, each with an on-screen hint card, a 3D guide arrow/Beam and a pulsing highlight on the target:
+  1. Hub: "Grab a contract!" → Mission Board (Grandma's Shed is auto-selected).
+  2. Arena: "PUNCH IT!" → highlight the shed. Advances after 5 breaks.
+  3. Bag full: "Bag full! Feed the Crusher" → arrow to the Crusher.
+  4. After the first sale: "Save up for a Pickaxe: $X / $100" (keep smashing and selling). Once money ≥ the Pickaxe price: "Buy a Pickaxe!" → arrow to the ShopCounter, Pickaxe tile highlighted.
+  5. Pickaxe equipped: "Smash 20% to collapse the roof!" → objective bar pulses. The tutorial ends at the first collapse, with a "You're hired!" toast.
+  Guidance is a small TutorialController (client) plus a server-validated step counter (server advances steps on real events only).
+- **Settings menu** (gear button + key `O`, unlocks the mouse): music volume, SFX volume (SoundGroups `Music`/`SFX`), screen shake on/off, debris amount (Low/Normal/High → pool 60/200/300, rubble linger 1/3/3 s), show AoE preview on/off. Saved in `settings` (§11); applied live.
+- DoD: 60 FPS on the stress test on the dev machine; feels instant at 150 ms simulated latency (Studio network sim if available); a new profile completes the tutorial without dead ends; settings persist. Ask: optional meshes for tools/crusher, optional tutorial arrow/hint icons.
 
 ### P7 — Content expansion I
 - Features: materials concrete/steel/gold/tnt plus onBreak hooks; tier gating feedback; chainsaw (hold, cut) and rocket (§6.4 projectiles); missions 2–5 with blueprints; `unlockMission` requirements.
@@ -632,10 +641,24 @@ Laser, Office Tower, Mega Mall multi-structure event, Skyscraper; surface-only s
 ### P11 — Mobile
 Touch buttons via ContextActionService (attack/hold, hotbar, interact), auto-aim assist at the crosshair, UI scaling pass, performance presets (fewer debris).
 
-### P12 — Monetization (fair)
+### P12 — Launch prep (= publishable game)
+- Objective: everything needed for a public launch apart from the user's creative/store work.
+- Features:
+  - **Badges** (BadgeService, server-awarded, recorded in `badges` to avoid repeat calls): Hired! (tutorial done), First Collapse, each mission complete, each tool bought, 3-star any mission, 10k/100k blocks smashed. The user creates badges and icons on Creator Hub and gives the ids (§14 batch). Code skips badges with empty ids.
+  - **Leaderboards**: in-server `leaderstats` ("Smashed" = blocks broken). Global top-50 boards in the hub for total blocks smashed and total money earned, via OrderedDataStore: write on save (only if changed), read every 5 min, displayed on a hub billboard.
+  - **Analytics** (AnalyticsService): onboarding funnel per tutorial step; core funnel joined → first break → first sell → first purchase → mission 1 complete → mission 2 complete; economy events on sell (source) and purchase (sink); custom events for phase collapses. All logged server-side, once per player per step.
+  - **Clean update shutdown**: on `BindToClose` in a live public server (not Studio), save everyone, then teleport players to a temporary reserved server that sends them straight back to a fresh public server. Mission servers save and return squads to the hub. All within the 30 s limit.
+  - **Hub server size**: max 16 players (Game Settings), several spawn pads spread around the plaza to avoid crowding. Since there's no damage, the "spawn protection" is a **"Stuck? [R]" button** that respawns you at the nearest safe spawn (hub or arena), with a 5 s cooldown.
+  - **Low-end check**: test with Studio graphics quality 1 and the Low debris setting. Target 30+ FPS in the MVP mission.
+  - **Debug cleanup**: `DEBUG=false`; remove dev auto-instances, test parts and stray prints; `RunTests` stays but is never required at runtime; the console is clean in a full playthrough.
+- **User launch checklist** (Sonnet reminds the user at this phase and tracks it in §19): game icon (512×512), 3+ thumbnails or a short trailer, title and description, the Experience Questionnaire (maturity rating), genre, public/private settings, badge icons, final asset choices, at least one playtest session with real players and economy tuning from what they observe.
+- Test: badges award once; leaderboards update; analytics events show in the Creator Dashboard (the user checks); an update shutdown moves players without data loss (live test by the user); full playthrough with zero console output.
+- DoD: game is publishable once the user checklist is done.
+
+### P13 — Monetization (fair)
 Cosmetic tool skins, crusher skins (Rock Monster!), debris colour themes, VIP cosmetic badge; optional dev product "2× money for 15 min" (non-essential). MonetizationService with idempotent `ProcessReceipt` (receipt ids in profile). Never sell power that gates content.
 
-### P13 — Helicopter (far future)
+### P14 — Helicopter (far future, post-launch update)
 Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limited → momentum/gradual acceleration) toward an input-derived target velocity, `AlignOrientation` for attitude: bank = −lateral velocity × k, pitch = forward accel × k, yaw from mouse with a turn-rate limit; Q/E altitude; hover bob from low-frequency noise; altitude ceiling/floor. Network owner = pilot (responsive); server validates weapon fire rate, position plausibility and hits (same ToolService path; rockets via §6.4). Rotors spin client-side via CFrame. Cartoon chunky heli model (asset workflow). Enter/exit via ProximityPrompt at a helipad in later missions.
 
 ---
@@ -666,8 +689,9 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - [ ] P9 Isolated squad servers
 - [ ] P10 Content expansion II
 - [ ] P11 Mobile
-- [ ] P12 Monetization
-- [ ] P13 Helicopter
+- [ ] P12 Launch prep — user: icon [ ], thumbnails [ ], description [ ], questionnaire [ ], badges [ ], real playtest [ ]
+- [ ] P13 Monetization
+- [ ] P14 Helicopter
 
 ### Current state (overwrite every task; keep under ~15 lines)
 - Updated: 2026-11-03 by Opus (planning)
@@ -680,9 +704,10 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
 - 2026-11-03 — Plan created (Opus). Interview decisions D1–D11 recorded in §2.
+- 2026-11-04 — Added FTUE + settings menu (P6) and P12 Launch prep (badges, leaderboards, analytics, update shutdown, server size, Stuck button, low-end check, debug cleanup, user launch checklist). Monetization → P13, helicopter → P14.
 - 2026-11-04 — References saved in `reference/`; SmoothPlastic only; two-tone ground; `Config/Theme` as the single style source.
 - 2026-11-04 — From the user's reference screenshots: mouse unlock (V), AoE preview, 3 s lingering rubble, crack overlays as the standard damage look, patterned noise colours, HUD timer pill.
 
 ### Ideas/backlog (not scheduled)
-- Hungry Rock Monster crusher variant (P12 cosmetic).
+- Hungry Rock Monster crusher variant (P13 cosmetic).
 - Rebirth/prestige, daily contracts, leaderboards (stats already saved).
