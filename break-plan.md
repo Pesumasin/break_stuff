@@ -18,6 +18,20 @@ A new session knows only what is written in this repo and what is in the Studio 
 - **Session end, and after every completed task** (not only per phase): update §19 "Current state" and the checklist, add §20 entries, then commit and push **break-plan.md only**: `git add break-plan.md && git commit -m "Progress: <task>" && git push`. Never leave the plan with unpushed progress.
 - If a task is interrupted halfway, record exactly what is half-done in "Current state" (which scripts and objects exist, what is unwired, what is untested).
 
+### 0.2 Session rollover (save tokens, keep context sharp) **[D]**
+Long sessions re-send their whole history on every turn, which costs tokens and dilutes attention. Fresh sessions starting from "Current state" are cheaper and more focused. Sonnet **tells the user to start a new session** when any of these is true:
+- A phase's Definition of Done just passed.
+- About 3 tasks have been completed in this session.
+- The conversation was compacted or summarized, or is clearly long (many tool outputs, long debugging).
+- The next task is in a different area (e.g. from destruction code to UI) and nothing in this session's history is needed for it.
+- A debugging tangent ended, so its history is now noise.
+
+Never suggest a rollover mid-task or while waiting for the user's asset answer. First finish the current task and the §0.1 session-end routine (state updated, plan pushed). Then end the report with exactly:
+```
+🔁 Good point to start a new session (saves tokens). Paste this there:
+Continue Break Stuff. Follow CLAUDE.md: git pull, run the break-plan.md §0.1 session-start routine, and resume from §19 "Current state" (next: <next step>).
+```
+
 ---
 
 ## 1. Vision (one paragraph)

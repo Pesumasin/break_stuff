@@ -12,6 +12,7 @@ HOW TO WORK
 4. Test every feature: run the self-tests (§16) after changing pure modules, then playtest via MCP. Read the console output (zero errors from our scripts), take screen captures, simulate input where possible. Fix failures before moving on. Never leave broken or half-wired features.
 5. When MCP can't do something (multi-client tests, publishing, enabling API access, live teleports), give me a short numbered checklist to run and tell me what to report back.
 6. After each task: update §19 (checklist + Current state), add one-line §20 entries for important decisions or deviations, then commit and push break-plan.md only. Commit nothing else unless I ask.
+7. Tell me when to start a new session, using the §0.2 triggers, and give me the paste-ready prompt from §0.2 with the next step filled in.
 
 ASSETS AND SOUNDS (§14, mandatory)
 - I choose every external asset and sound. Never pick, search-insert or generate final assets on your own.
