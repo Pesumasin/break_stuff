@@ -6,10 +6,17 @@ Single source of truth for building the game. Implementer: Claude Sonnet via Rob
 
 ## 0. How to use this file
 
-- Read §0–§3 and the current phase in §17 before each work session. Read other sections when the task touches them.
+- Follow the session routine in §0.1. Read §0–§3 and the current phase in §17 before each work session. Read other sections when the task touches them.
 - Work through §17 phases in order. Do not start a phase before the previous phase's Definition of Done passes.
 - Keep §19 (checklist) and §20 (decision log) up to date. They are the only parts of this file the implementer edits routinely. Change the spec only when the user approves, and log it in §20.
 - The Studio place is the source of truth for code and assets. This repo holds the plan. **[D]** No Rojo or file sync: all scripts, UI and objects are created and edited in Studio through MCP.
+
+### 0.1 Session handoff (work may continue on another device, in a new session) **[D]**
+A new session knows only what is written in this repo and what is in the Studio place. Continuity depends on both being current.
+- **Place**: the place is published and **Team Create is on** (set up in P0), so every Studio edit autosaves to the Roblox cloud and any device opens the latest version. Never rely on a local `.rbxl`.
+- **Session start**: (1) `git pull`. (2) Read §0–§3, §4.5, §19 "Current state" and the current phase in §17. (3) Confirm Studio has the place open (not a local copy) via MCP state. (4) Inspect the tree and compare it with "Current state". If they disagree, trust the place, fix "Current state", and note it in §20. (5) Continue from "Next step".
+- **Session end, and after every completed task** (not only per phase): update §19 "Current state" and the checklist, add §20 entries, then commit and push **break-plan.md only**: `git add break-plan.md && git commit -m "Progress: <task>" && git push`. Never leave the plan with unpushed progress.
+- If a task is interrupted halfway, record exactly what is half-done in "Current state" (which scripts and objects exist, what is unwired, what is untested).
 
 ---
 
@@ -97,7 +104,7 @@ StarterPlayer/StarterPlayerScripts
     ViewmodelController        arms + tool model on camera, procedural anims
     ToolController             targeting raycast, cooldown UI, sends attacks, prediction
     FXController               debris pool, particles, sounds, collapse show, sell FX
-    UIController               HUD, shop, mission board, results, toasts
+    UIController               screen routing; one module per screen in Controllers/UI/ (HUD, Shop, MissionBoard, Results, Toasts)
 StarterGui
   HUD (ScreenGui), Shop, MissionBoard, Results, Toasts   (built in Studio, logic in UIController)
 Workspace
@@ -133,6 +140,28 @@ Hot per-player values are replicated as **Player attributes** set by the server:
 Every C→S handler: `typeof` check all args, reject NaN/inf vectors, per-player rate limit (token bucket: `UseTool` 25/s burst 30, others 5/s), silently drop invalid requests (log a counter, never error).
 
 ---
+
+### 4.5 Code style **[D]** (keeps every session's output indistinguishable)
+- Before writing a new module, read 1–2 existing modules of the same kind and match them. Once P0 exists, existing code is the reference style.
+- Module template:
+  ```lua
+  -- StructureService: grid-backed destructible structures (§5).
+  local ReplicatedStorage = game:GetService("ReplicatedStorage")
+  local Config = require(ReplicatedStorage.Shared.Config.Materials)
+
+  local StructureService = {}
+
+  function StructureService.init() end      -- create state, connect remotes
+  function StructureService.start() end     -- begin loops (after all init)
+
+  return StructureService
+  ```
+- First line: a one-line purpose comment plus the § reference. Other comments explain only *why*, not *what*. No commented-out code, no TODOs without a §20 entry.
+- Services first (`game:GetService`), then requires, then constants, then local state, then functions. Small local functions, early returns, no deep nesting.
+- Config values only in `Shared/Config`. No magic numbers in services (except trivial 0/1).
+- Client↔server communication only through §4.4 remotes. Add new remotes to the §4.4 table in the same task.
+- `print` only behind `Config.Economy.DEBUG`. `warn` for recoverable problems. No silent `pcall` except around DataStore/MemoryStore/Teleport calls, which must log failures.
+- UI: build instances in Studio and keep logic in UIController modules (one module per screen under `Controllers/UI/`). Styles per §13.
 
 ## 5. Destruction system
 
@@ -512,7 +541,7 @@ Excluded until later: other tools, materials and missions; co-op; reserved serve
 - **Playtest**: start play via MCP, read console output (zero errors/warnings from our scripts), take screen captures to check visuals, simulate input (keyboard/mouse) where possible, stop play, iterate.
 - **Multi-client** (P8+): Studio "Local Server + N players" may not be drivable through MCP. If not, give the user a short manual test script (steps and expected results) and ask them to run it and report.
 - **Perf** (P6+): stress blueprint `StressCube` (20×15×20 hollow = ~3,000 blocks; and a solid 5,000 variant in P6). Check frame time, part count, network receive (Shift+F3 / MicroProfiler); record numbers in §20.
-- After each phase: the user saves/publishes the place (Sonnet reminds them). A phase is done only after a clean full playtest.
+- Team Create autosaves the place to the cloud (§0.1). If Studio ever shows unsaved changes, ask the user to save to Roblox. A phase is done only after a clean full playtest.
 
 ---
 
@@ -522,6 +551,7 @@ Each phase leaves the game playable. Assets: request only when the phase's featu
 
 ### P0 — Foundation & MCP check
 - Objective: verified MCP connection, project skeleton, first-person movement in a test area.
+- **User action first**: publish the place to Roblox and turn on Team Create (Home → Collaborate / File → Publish). Sonnet gives the steps and waits for confirmation, then records it in §20.
 - Features: §4.2 folders/bootstraps; Config modules with MVP data; Remotes created; Util.Grid, Util.Format, Util.Packer + Tests; collision groups (`Debris`, `Players`); first-person lock (`CameraMode=LockFirstPerson`), crosshair; basic Lighting per §13; a flat test plate.
 - Depends: —. Assets: none.
 - Test: self-tests pass; playtest shows first-person and crosshair, no console errors.
@@ -542,7 +572,7 @@ Each phase leaves the game playable. Assets: request only when the phase's featu
 
 ### P3 — Persistence
 - Features: DataService §11; load/save of money/bag/cap/tools/missions/stats; BindToClose; priority saves.
-- Depends: P2. **User action**: publish the place plus enable API access (ask).
+- Depends: P2. **User action**: enable Studio Access to API Services (ask).
 - Test: earn money, stop, replay → money restored; sanitize tests (corrupt table → valid data); simulate a save failure (temporary forced error) → retries plus kept dirty.
 - DoD: data survives sessions; no saves per hit (count saves in log).
 
@@ -606,10 +636,10 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 ---
 
 ## 19. Progress checklist (Sonnet updates)
-- [ ] P0 Foundation & MCP check
+- [ ] P0 Foundation & MCP check (user: publish + Team Create [ ])
 - [ ] P1 Destruction core — assets: hit/break SFX [ ]
 - [ ] P2 Bag, Crusher, money, HUD — assets: crusher/coin/UI SFX [ ]
-- [ ] P3 Persistence (user: publish + API access [ ])
+- [ ] P3 Persistence (user: API access [ ])
 - [ ] P4 Tools, shop, upgrades — assets: swing SFX, icons (opt) [ ]
 - [ ] P5 Hub, missions, phased collapse → **MVP** — assets: collapse, music, jingle [ ]
 - [ ] P6 Feel, performance, balance
@@ -621,7 +651,14 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - [ ] P12 Monetization
 - [ ] P13 Helicopter
 
-Current phase: **P0**. Next step: verify the MCP connection and inspect the place.
+### Current state (overwrite every task; keep under ~15 lines)
+- Updated: 2026-11-03 by Opus (planning)
+- Phase / task: P0, not started
+- Done in this phase: —
+- Half-done / unwired / untested: —
+- Next step: verify the MCP connection, inspect the place, publish it and enable Team Create (user action, §0.1), build the skeleton.
+- Waiting on user: —
+- Open asset requests: —
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
 - 2026-11-03 — Plan created (Opus). Interview decisions D1–D11 recorded in §2.
