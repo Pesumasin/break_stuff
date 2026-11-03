@@ -42,7 +42,7 @@ First-person, colourful, chunky cartoon **demolition simulator**. You are the ro
 | D10 | PC first and first-person only. Mobile later (design input/UI so it can be added). Console out of scope. |
 | D11 | The user picks all external assets and sounds (§14). |
 
-No visual reference image exists in the repo. **[A]** The design bible (§13) is derived from the brief's description: colourful, chunky, low-poly/voxel simulator style.
+Visual references: `reference/style-outdoor.webp` (world, terrain, arms, lighting) and `reference/style-indoor-hud.webp` (HUD, cracks, rubble, target outlines). They are the style target for §13. Use them as style guidance only, never as assets to copy.
 
 ---
 
@@ -72,7 +72,7 @@ Readability rules: money, bag (count/cap), equipped tool, and objective (phase k
 ReplicatedStorage
   Shared/                      (ModuleScripts, required by both sides)
     Config/
-      Materials, Tools, Upgrades, Economy, Missions, Assets, FX
+      Materials, Tools, Upgrades, Economy, Missions, Assets, FX, Theme
     Blueprints/                one ModuleScript per structure (pure functions → cell list)
     Util/
       Grid        cell math (index<->xyz, neighbours, sphere/ray iteration)
@@ -161,7 +161,7 @@ Every C→S handler: `typeof` check all args, reject NaN/inf vectors, per-player
 - Config values only in `Shared/Config`. No magic numbers in services (except trivial 0/1).
 - Client↔server communication only through §4.4 remotes. Add new remotes to the §4.4 table in the same task.
 - `print` only behind `Config.Economy.DEBUG`. `warn` for recoverable problems. No silent `pcall` except around DataStore/MemoryStore/Teleport calls, which must log failures.
-- UI: build instances in Studio and keep logic in UIController modules (one module per screen under `Controllers/UI/`). Styles per §13.
+- UI: build instances in Studio and keep logic in UIController modules (one module per screen under `Controllers/UI/`). **Every colour, font, corner radius and stroke comes from `Shared/Config/Theme`** (§13). A small `Theme.apply(guiObject, styleName)` helper styles elements. No hard-coded colours or fonts in UI code or in world builders.
 
 ## 5. Destruction system
 
@@ -181,7 +181,7 @@ Every C→S handler: `typeof` check all args, reject NaN/inf vectors, per-player
 - Blueprints (`Shared/Blueprints/<id>`) are pure functions returning `{size, sections={ids in collapse order}, cells={ {x,y,z,mat,section} ... }}`. They are built from helpers in a `BlueprintKit` util: `box`, `hollowBox(wallThickness)`, `floor`, `gableRoof`, `windowRow`, `door`, `fillMaterial(predicate, mat)`. Hand-typed cell lists are forbidden: compose helpers. **[D]** Structures are made from data, never hand-placed parts, so they can be rebuilt, replayed and loaded in mission servers.
 
 ### 5.2 Block parts
-Part properties: `Anchored=true, CanCollide=true, CanTouch=false, CanQuery=true, CastShadow=` config `FX.blockShadows` (default true, set false for structures >3000 blocks), `Material=SmoothPlastic` (or per-material override), `Color = material.color` with deterministic brightness variation = **patterned noise** `math.noise(x*0.18, y*0.18, z*0.18 + seed)` → ±8% (darker/lighter blotches spanning neighbouring blocks, like stains on a wall) plus ±2% per-block hash jitter (voxel richness at zero cost, no textures), `Name="B"`, attribute `M` = matId (uint) for client FX and prediction. Parent: `Workspace.Missions.<instanceId>.Structure`.
+Part properties: `Anchored=true, CanCollide=true, CanTouch=false, CanQuery=true, CastShadow=` config `FX.blockShadows` (default true, set false for structures >3000 blocks), `Material=SmoothPlastic` (always, §13), `Color = material.color` with deterministic brightness variation = **patterned noise** `math.noise(x*0.18, y*0.18, z*0.18 + seed)` → ±8% (darker/lighter blotches spanning neighbouring blocks, like stains on a wall) plus ±2% per-block hash jitter (voxel richness at zero cost, no textures), `Name="B"`, attribute `M` = matId (uint) for client FX and prediction. Parent: `Workspace.Missions.<instanceId>.Structure`.
 
 Spawning: batched at ≤300 parts per Heartbeat, **bottom layer first**, so construction reads as the structure "rising" (with a client dust puff per layer row; optional). Never `Instance.new` thousands of parts in one frame.
 
@@ -190,14 +190,14 @@ Spawning: batched at ≤300 parts per Heartbeat, **bottom layer first**, so cons
 |---|---|---|---|---|---|---|---|
 | `plank` | Planks | 1 | 1 | 0 | `#C8823C` | splinter debris | MVP |
 | `roof` | Roof Tile | 1 | 1 | 0 | `#D9534F` | | MVP |
-| `glass` | Glass | 1 | 2 | 0 | `#9FE3FF`, Transparency 0.35, Material Glass | shatter: shards, no cubes | MVP |
+| `glass` | Glass | 1 | 2 | 0 | `#9FE3FF`, Transparency 0.35 | shatter: shards, no cubes | MVP |
 | `brick` | Brick | 2 | 3 | 0 | `#B5452E` | hands 2 hits, pickaxe 1 | MVP |
 | `concrete` | Concrete | 4 | 6 | 1 | `#B8B8B0` | | P7 |
-| `steel` | Steel Beam | 10 | 15 | 3 | `#6E7F8E`, Material Metal | sparks, clang | P7 |
-| `gold` | Vault Gold | 20 | 100 | 3 | `#FFD23F`, Material Neon | coin burst | P7 |
+| `steel` | Steel Beam | 10 | 15 | 3 | `#6E7F8E` | sparks, clang | P7 |
+| `gold` | Vault Gold | 20 | 100 | 3 | `#FFD23F` | coin burst, sparkle particles | P7 |
 | `tnt` | TNT Crate | 1 | 0 | 0 | `#E8322E` | special: explodes, radius 2 cells, dmg 6 | P7 |
 
-Schema: `{id, name, hp, value, minTier, color, material?, transparency?, debris="cubes"|"shards"|"sparks", soundSet, onBreak=nil|"explode"}`. `onBreak` hooks are dispatched by a small table in StructureService. New special blocks = new hook functions, no core changes.
+Schema: `{id, name, hp, value, minTier, color, transparency?, debris="cubes"|"shards"|"sparks", soundSet, onBreak=nil|"explode"}`. `onBreak` hooks are dispatched by a small table in StructureService. New special blocks = new hook functions, no core changes.
 
 **Hardness tiers**: if `tool.tier < material.minTier`, the hit does 0 damage and plays a "TOO TOUGH" clank. The outline turns red so players know what to buy next.
 
@@ -468,13 +468,15 @@ All of §6.3, plus a membership check on every structure op. A player can only t
 
 **Pillars**: chunky, bold, readable, playful, juicy. Everything looks like it's made of the same toy blocks.
 
-**Palette** (Config/FX + UI):
+**References**: `reference/*.webp` (§2). Look: flat colours, **no textures, no shiny materials**. Every Part in the game uses `SmoothPlastic` (no Metal/Glass/Neon/realistic materials). Materials differ only by colour, transparency and FX.
+
+**Palette** (single source: `Shared/Config/Theme`, used by UI, world builders, blocks and FX):
 - World: grass `#6BC04B`, grass dark `#4E9A36`, dirt `#8B5A2B`, sand `#E8C98A`, sky `#8FD3FF`, rock `#9AA3AE`.
 - Materials: §5.3 colours. Each material must contrast with the arena ground.
 - UI: primary yellow `#FFC93C`, action orange `#FF8A00`, money green `#3DDC84`, danger red `#FF4D4D`, info blue `#3BA7FF`, panel cream `#FFF6E0`, outline/ink `#2B2B3A`.
 - Brand stripes (machines/HQ): yellow `#FFC93C` / ink `#2B2B3A` hazard stripes.
 
-**Environment**: parts-based chunky terrain (no smooth Terrain), plateau steps of 4 studs, blocky trees (brown trunk plus 2–3 green cubes), fences, cones, barrels. Lighting: `Lighting.Technology=ShadowMap`, bright midday, Atmosphere density 0.25 with a light blue haze, ColorCorrection saturation +0.15 / contrast +0.05, subtle Bloom (intensity 0.4, threshold 0.95). No realism, no grime.
+**Environment**: parts-based chunky terrain (no smooth Terrain), plateau steps of 4 studs. **Ground blocks are two-tone**: a dirt-coloured body plus a thin (0.8-stud) grass-green cap part on top (static decoration only; destructible blocks stay one Part each), blocky trees (brown trunk plus 2–3 green cubes), fences, cones, barrels. Lighting: `Lighting.Technology=ShadowMap`, bright midday, Atmosphere density 0.25 with a light blue haze, ColorCorrection saturation +0.15 / contrast +0.05, subtle Bloom (intensity 0.4, threshold 0.95). No realism, no grime.
 
 **Structures/blocks**: 4-stud cube grid, SmoothPlastic, patterned noise colour blotches plus slight per-block jitter (§5.2), dark crack overlays on damaged blocks, rubble cubes that settle briefly, readable silhouettes (gable roofs, big windows, chimneys, flags). Details are made of blocks too (a door = 1×2 cells of a different colour). Every structure has at least 3 materials for visual and economic variety.
 
@@ -554,7 +556,7 @@ Each phase leaves the game playable. Assets: request only when the phase's featu
 ### P0 — Foundation & MCP check
 - Objective: verified MCP connection, project skeleton, first-person movement in a test area.
 - **User action first**: publish the place to Roblox and turn on Team Create (Home → Collaborate / File → Publish). Sonnet gives the steps and waits for confirmation, then records it in §20.
-- Features: §4.2 folders/bootstraps; Config modules with MVP data; Remotes created; Util.Grid, Util.Format, Util.Packer + Tests; collision groups (`Debris`, `Players`); first-person lock (`CameraMode=LockFirstPerson`), crosshair, V mouse lock/unlock toggle plus hint pill (§6.5); basic Lighting per §13; a flat test plate.
+- Features: §4.2 folders/bootstraps; Config modules with MVP data (including `Theme` with the §13 palette and fonts); Remotes created; Util.Grid, Util.Format, Util.Packer + Tests; collision groups (`Debris`, `Players`); first-person lock (`CameraMode=LockFirstPerson`), crosshair, V mouse lock/unlock toggle plus hint pill (§6.5); basic Lighting per §13; a flat test plate.
 - Depends: —. Assets: none.
 - Test: self-tests pass; playtest shows first-person and crosshair, no console errors.
 - DoD: skeleton exists exactly per §4.2; Studio state clean; §19 updated.
@@ -664,6 +666,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
 - 2026-11-03 — Plan created (Opus). Interview decisions D1–D11 recorded in §2.
+- 2026-11-04 — References saved in `reference/`; SmoothPlastic only; two-tone ground; `Config/Theme` as the single style source.
 - 2026-11-04 — From the user's reference screenshots: mouse unlock (V), AoE preview, 3 s lingering rubble, crack overlays as the standard damage look, patterned noise colours, HUD timer pill.
 
 ### Ideas/backlog (not scheduled)
