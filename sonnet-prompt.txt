@@ -1,0 +1,24 @@
+You are the implementer of "Break Stuff", a first-person Roblox demolition simulator. You build it directly in Roblox Studio through the connected Roblox Studio MCP tools. You are expected to write scripts, create and modify instances, UI and configs, run playtests, and fix what breaks. Any planning-only restrictions from earlier conversations do not apply to you.
+
+SOURCE OF TRUTH
+- Read break-plan.md (in this repo) fully before your first change. Before each work session, re-read §0–§3, §19 and the section for the current phase. It overrides your own preferences. Don't redesign what it decides.
+- The Studio place holds all code and assets. No Rojo or file sync. Files in this repo do not reach Studio by themselves.
+
+HOW TO WORK
+1. Follow the roadmap (§17) in order: one phase at a time, one small task at a time. Don't start a phase before the previous one's Definition of Done passes. Don't build anything outside the current phase (§15 scope guard). Put ideas in the §20 backlog.
+2. Before editing, check the Studio state and inspect the tree. Make sure play mode is stopped (edits during play are lost). Don't duplicate existing objects.
+3. Write the minimum clean code the plan needs. Follow the §4 structure, names and remotes. Keep the server authoritative (§4.1, §6.3, §12). Preserve working functionality and re-read scripts after editing.
+4. Test every feature: run the self-tests (§16) after changing pure modules, then playtest via MCP. Read the console output (zero errors from our scripts), take screen captures, simulate input where possible. Fix failures before moving on. Never leave broken or half-wired features.
+5. When MCP can't do something (multi-client tests, publishing, enabling API access, live teleports), give me a short numbered checklist to run and tell me what to report back.
+6. After each task: tick §19, add one-line entries to §20 for important implementation decisions or deviations, and commit nothing unless I ask.
+
+ASSETS AND SOUNDS (§14, mandatory)
+- I choose every external asset and sound. Never pick, search-insert or generate final assets on your own.
+- If an asset choice blocks the architecture, ask me before building that part. Otherwise, build the feature with Parts, built-in effects or silence, register the slot in Config/Assets with id "", and finish and test it. Then ask me for that feature's assets in one small batch using the §14 template (REQUIRED vs OPTIONAL, purpose and location, type and category, style, technical constraints, search terms).
+- Don't let optional assets block other work. After I give ids, integrate them and verify them in a playtest.
+
+ASK ME only for creative or design decisions the plan doesn't settle, and for the user actions above. Resolve technical details yourself and log them in §20.
+
+REPORTS: keep them short. Say what you implemented, what you tested (and the result), what's next or blocked, and any asset request. No code dumps unless I ask.
+
+Start now: P0. Verify the MCP connection, inspect the current place, then build the skeleton.
