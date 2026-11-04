@@ -695,13 +695,15 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 ### Current state (overwrite every task; keep under ~15 lines)
 - Updated: 2026-11-04 by Opus (implementation)
-- Phase / task: P0 DONE. P1 not started.
-- P0 built: §4.2 folders; Config (Theme, Materials, Tools, Upgrades, Economy, Missions, Assets, FX); Util Grid/Format/Packer; Tests.RunTests (9/9); 12 MVP Remotes; collision groups Debris/Players; CameraMode=LockFirstPerson; Lighting per §13; Workspace.TestPlate (two-tone) + SpawnLocation; Missions folder; StarterGui.HUD (Crosshair, MouseHint); Client bootstrap + Input/Camera/UI controllers + UI/HUD; Server bootstrap (empty ORDER).
-- Verified: user confirmed V lock/unlock and no cursor jitter; zero console output.
-- Half-done / unwired / untested: characters not yet in the `Players` collision group (do in P1 with debris).
-- Not yet in tree by design: Util.BlueprintKit (P1), Util.ToolStats (P4), ProjectileFX (P7), Squad* remotes (P8).
-- Next step: P1 — Util.BlueprintKit + TestHut blueprint, then StructureService (grid, rising spawn, applyDamage/breakCell, BlockFX).
-- Waiting on user: confirm Team Create is on (Studio reconnected with the latest scripts, so it likely is).
+- Phase / task: P1 in progress. Done: Util.BlueprintKit, Blueprints.TestHut (156 cells, sections roof/body), StructureService, minimal MissionService (dev auto-instance only).
+- P0 built: §4.2 folders; Config (Theme, Materials, Tools, Upgrades, Economy, Missions, Assets, FX); Util Grid/Format/Packer; Tests.RunTests; 12 MVP Remotes; collision groups; first-person + V toggle; Lighting; TestPlate; HUD (Crosshair, MouseHint); client/server bootstraps.
+- P1 so far: Server ORDER = StructureService, MissionService. Dev instance per player builds TestHut at Economy.DEV_INSTANCE.origin (-16, 0.8, -48), rising spawn ≤300/frame, patterned-noise colours. applyDamage/breakCell/BlockFX flush per Heartbeat to members. RunTests 11/11 (added blueprintKitShapes, blueprintsValid).
+- Verified (server playtest via temp Script): 156 parts spawn; brick 2 hits, plank 1; 3 FX records flushed; D3 clamp keeps hp 1 + BagFull Notify; part attribute M set.
+- Half-done / unwired / untested: no client yet — BlockFX is fired but nothing listens; no UseTool handler. Characters not yet in `Players` collision group.
+- Not yet in tree by design: Util.ToolStats (P4), ProjectileFX (P7), Squad* remotes (P8), onBreak hook table (P7, with TNT).
+- Next step: P1 — ToolService (UseTool validation §6.3 for hands, rate limit, server log counter) + ToolController (targeting raycast, outline, cooldown ring, sends UseTool).
+- After that: viewmodel arms + punch anim; FXController (debris pool, dust, shake, crack darkening, BlockFX listener); Players collision group; empty SFX/crack slots in Config/Assets.
+- Waiting on user: confirm Team Create is on.
 - Open asset requests: —
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
@@ -717,6 +719,9 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-04 — Edit-mode `require` caches modules: before RunTests, swap each Shared/Tests ModuleScript for a fresh clone (or run the tests in a playtest).
 
 - 2026-11-04 — P0 DoD passed (user verified mouse lock). Studio MCP studio_id changes when the place is reopened: call list_roblox_studios each session.
+- 2026-11-04 — P1: BlueprintKit is a builder (`BlueprintKit.new(sx,sy,sz,sections)`, `:box/:floor/:hollowBox/:gableRoof/:windowRow/:door/:fillMaterial/:build`); later calls overwrite; mat=nil clears; build() sorts bottom-first.
+- 2026-11-04 — P1: StructureService API works on a structure (instance.structures[1]), not the instance: `build(instance, blueprintId, origin)`, `applyDamage(structure, attacker, hits, toolId)`, `destroy`. Section collapse lock = `structure.lockedSections[section]` (not per-cell `locked`). Cross-service calls via `StructureService.hooks` {canFit, addToBag, onBroken}, overwritten by PlayerStateService (P2) / MissionService (P5).
+- 2026-11-04 — MCP execute_luau in a playtest has its own require cache: test live services by parenting a temporary Script to ServerScriptService that prints results, then read the console.
 
 ### Ideas/backlog (not scheduled)
 - Hungry Rock Monster crusher variant (P13 cosmetic).
