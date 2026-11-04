@@ -677,7 +677,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 ---
 
 ## 19. Progress checklist (Sonnet updates)
-- [ ] P0 Foundation & MCP check (user: publish + Team Create [ ])
+- [x] P0 Foundation & MCP check (user: publish [x] + Team Create [ ] unconfirmed)
 - [ ] P1 Destruction core — assets: hit/break SFX [ ]
 - [ ] P2 Bag, Crusher, money, HUD — assets: crusher/coin/UI SFX [ ]
 - [ ] P3 Persistence (user: API access [ ])
@@ -695,13 +695,13 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 ### Current state (overwrite every task; keep under ~15 lines)
 - Updated: 2026-11-04 by Opus (implementation)
-- Phase / task: P0, skeleton built and playtested; waiting on 3 user checks before DoD.
-- Done in this phase: §4.2 folders; Config (Theme, Materials, Tools, Upgrades, Economy, Missions, Assets, FX); Util Grid/Format/Packer; Tests.RunTests (9/9 pass); 12 MVP Remotes; collision groups Debris/Players; StarterPlayer CameraMode=LockFirstPerson; Lighting per §13 (minus Technology); Workspace.TestPlate (two-tone) + yellow SpawnLocation, Missions folder; StarterGui.HUD (Crosshair, MouseHint); Client bootstrap + Input/Camera/UI controllers + UI/HUD; Server bootstrap (empty ORDER).
-- Playtest: zero console output; V toggles MouseBehavior LockCenter↔Default (verified per frame).
-- Half-done / unwired / untested: user retest of cursor jitter/V after the RenderStep fix. Characters not yet assigned to the `Players` collision group (do in P1 with debris).
+- Phase / task: P0 DONE. P1 not started.
+- P0 built: §4.2 folders; Config (Theme, Materials, Tools, Upgrades, Economy, Missions, Assets, FX); Util Grid/Format/Packer; Tests.RunTests (9/9); 12 MVP Remotes; collision groups Debris/Players; CameraMode=LockFirstPerson; Lighting per §13; Workspace.TestPlate (two-tone) + SpawnLocation; Missions folder; StarterGui.HUD (Crosshair, MouseHint); Client bootstrap + Input/Camera/UI controllers + UI/HUD; Server bootstrap (empty ORDER).
+- Verified: user confirmed V lock/unlock and no cursor jitter; zero console output.
+- Half-done / unwired / untested: characters not yet in the `Players` collision group (do in P1 with debris).
 - Not yet in tree by design: Util.BlueprintKit (P1), Util.ToolStats (P4), ProjectileFX (P7), Squad* remotes (P8).
-- Next step: after user confirms → mark P0 done, start P1 (StructureService + BlueprintKit + TestHut).
-- Waiting on user: (1) Team Create on? (2) retest after hidden-cursor fix; clarify "mouse unlocks after a short delay".
+- Next step: P1 — Util.BlueprintKit + TestHut blueprint, then StructureService (grid, rising spawn, applyDamage/breakCell, BlockFX).
+- Waiting on user: confirm Team Create is on (Studio reconnected with the latest scripts, so it likely is).
 - Open asset requests: —
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
@@ -715,6 +715,8 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-04 — Materials config is `{byId, byUid}`; uid (u8) is the compact id for part attribute `M` and BlockFX. Upgrade tracks live in Config/Upgrades.tools[toolId], not in Tools rows.
 - 2026-11-04 — Mouse unlock: CameraController BindToRenderStep at Camera+1 sets MouseBehavior=Default while unlocked; locked = untouched engine LockFirstPerson. Locked cursor hidden via UIS.MouseIcon = Theme.HIDDEN_CURSOR (built-in rbxasset://textures/Blank.png, fully transparent); "" when unlocked. Modal-button and MouseIconEnabled=false approaches dropped (cursor jitter in Studio, V didn't free it). MouseLockChanged BindableEvent drives the hint.
 - 2026-11-04 — Edit-mode `require` caches modules: before RunTests, swap each Shared/Tests ModuleScript for a fresh clone (or run the tests in a playtest).
+
+- 2026-11-04 — P0 DoD passed (user verified mouse lock). Studio MCP studio_id changes when the place is reopened: call list_roblox_studios each session.
 
 ### Ideas/backlog (not scheduled)
 - Hungry Rock Monster crusher variant (P13 cosmetic).
