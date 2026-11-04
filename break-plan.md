@@ -694,12 +694,14 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - [ ] P14 Helicopter
 
 ### Current state (overwrite every task; keep under ~15 lines)
-- Updated: 2026-11-03 by Opus (planning)
-- Phase / task: P0, not started
-- Done in this phase: —
-- Half-done / unwired / untested: —
-- Next step: verify the MCP connection, inspect the place, publish it and enable Team Create (user action, §0.1), build the skeleton.
-- Waiting on user: —
+- Updated: 2026-11-04 by Opus (implementation)
+- Phase / task: P0, skeleton built and playtested; waiting on 3 user checks before DoD.
+- Done in this phase: §4.2 folders; Config (Theme, Materials, Tools, Upgrades, Economy, Missions, Assets, FX); Util Grid/Format/Packer; Tests.RunTests (9/9 pass); 12 MVP Remotes; collision groups Debris/Players; StarterPlayer CameraMode=LockFirstPerson; Lighting per §13 (minus Technology); Workspace.TestPlate (two-tone) + yellow SpawnLocation, Missions folder; StarterGui.HUD (Crosshair, MouseHint, MouseUnlock modal button); Client bootstrap + Input/Camera/UI controllers + UI/HUD; Server bootstrap (empty ORDER).
+- Playtest: zero console output; first-person lock on; V flips hint + modal button.
+- Half-done / unwired / untested: cursor actually freeing on V not verifiable via MCP (user check). Characters not yet assigned to the `Players` collision group (do in P1 with debris).
+- Not yet in tree by design: Util.BlueprintKit (P1), Util.ToolStats (P4), ProjectileFX (P7), Squad* remotes (P8).
+- Next step: after user confirms → mark P0 done, start P1 (StructureService + BlueprintKit + TestHut).
+- Waiting on user: (1) Team Create on? (2) set Lighting.Technology=ShadowMap by hand (3) confirm V frees/locks the cursor.
 - Open asset requests: —
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
@@ -707,6 +709,12 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-04 — Added FTUE + settings menu (P6) and P12 Launch prep (badges, leaderboards, analytics, update shutdown, server size, Stuck button, low-end check, debug cleanup, user launch checklist). Monetization → P13, helicopter → P14.
 - 2026-11-04 — References saved in `reference/`; SmoothPlastic only; two-tone ground; `Config/Theme` as the single style source.
 - 2026-11-04 — From the user's reference screenshots: mouse unlock (V), AoE preview, 3 s lingering rubble, crack overlays as the standard damage look, patterned noise colours, HUD timer pill.
+
+- 2026-11-04 — P0: place published (placeId 106030102652542). Lighting.Technology can't be set via MCP (capability) → user sets it.
+- 2026-11-04 — Theme lighting tuned: Brightness 2, Atmosphere Haze 0.3 (was washed out); EnvironmentSpecularScale 0, DiffuseScale 0.5 set in Lighting.
+- 2026-11-04 — Materials config is `{byId, byUid}`; uid (u8) is the compact id for part attribute `M` and BlockFX. Upgrade tracks live in Config/Upgrades.tools[toolId], not in Tools rows.
+- 2026-11-04 — Mouse unlock uses a visible Modal TextButton (HUD.MouseUnlock) + MouseIconEnabled; CameraController.MouseLockChanged BindableEvent drives the hint.
+- 2026-11-04 — Edit-mode `require` caches modules: before RunTests, swap each Shared/Tests ModuleScript for a fresh clone (or run the tests in a playtest).
 
 ### Ideas/backlog (not scheduled)
 - Hungry Rock Monster crusher variant (P13 cosmetic).
