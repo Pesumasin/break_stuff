@@ -701,7 +701,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - Half-done / unwired / untested: user retest of cursor jitter/V after the RenderStep fix. Characters not yet assigned to the `Players` collision group (do in P1 with debris).
 - Not yet in tree by design: Util.BlueprintKit (P1), Util.ToolStats (P4), ProjectileFX (P7), Squad* remotes (P8).
 - Next step: after user confirms → mark P0 done, start P1 (StructureService + BlueprintKit + TestHut).
-- Waiting on user: (1) Team Create on? (2) retest: no jitter while locked, V frees/locks the cursor.
+- Waiting on user: (1) Team Create on? (2) retest after hidden-cursor fix; clarify "mouse unlocks after a short delay".
 - Open asset requests: —
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
@@ -713,7 +713,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-04 — P0: place published (placeId 106030102652542). Lighting.Technology no longer exists in current Studio → dropped from §13 requirements.
 - 2026-11-04 — Theme lighting tuned: Brightness 2, Atmosphere Haze 0.3 (was washed out); EnvironmentSpecularScale 0, DiffuseScale 0.5 set in Lighting.
 - 2026-11-04 — Materials config is `{byId, byUid}`; uid (u8) is the compact id for part attribute `M` and BlockFX. Upgrade tracks live in Config/Upgrades.tools[toolId], not in Tools rows.
-- 2026-11-04 — Mouse unlock: CameraController BindToRenderStep at Camera+1 sets MouseBehavior=Default while unlocked; locked = untouched engine LockFirstPerson. Modal-button and MouseIconEnabled=false approaches dropped (cursor jitter in Studio, V didn't free it). MouseLockChanged BindableEvent drives the hint.
+- 2026-11-04 — Mouse unlock: CameraController BindToRenderStep at Camera+1 sets MouseBehavior=Default while unlocked; locked = untouched engine LockFirstPerson. Locked cursor hidden via UIS.MouseIcon = Theme.HIDDEN_CURSOR (built-in rbxasset://textures/Blank.png, fully transparent); "" when unlocked. Modal-button and MouseIconEnabled=false approaches dropped (cursor jitter in Studio, V didn't free it). MouseLockChanged BindableEvent drives the hint.
 - 2026-11-04 — Edit-mode `require` caches modules: before RunTests, swap each Shared/Tests ModuleScript for a fresh clone (or run the tests in a playtest).
 
 ### Ideas/backlog (not scheduled)
