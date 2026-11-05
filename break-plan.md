@@ -93,7 +93,8 @@ ReplicatedStorage
       Format      number formatting ($1.2K, 3.4M)
       Packer      buffer pack/unpack for FX batches
       BlueprintKit  shape helpers for blueprints (§5.1)
-      ToolStats   effective tool stats from upgrades (§6.2)
+      ToolStats   effective tool stats from upgrades (§6.2) + hit set of one attack (§6.3)
+      TokenBucket per-key rate limiter for remote handlers
   Remotes/                     (Folder; RemoteEvents/RemoteFunctions created in Studio, names in §4.4)
   Assets/                      ToolModels/, CrusherParts/ (placeholder models built from Parts)
 ServerScriptService
@@ -114,6 +115,7 @@ StarterPlayer/StarterPlayerScripts
   Client.client.lua            bootstrap
   Controllers/
     CameraController           first-person lock, shake, FOV kick
+    StateController            client mirror of StateSync (owned tools, upgrades, bag level)
     InputController            action mapping (ContextActionService) → abstract actions
     ViewmodelController        arms + tool model on camera, procedural anims
     ToolController             targeting raycast, cooldown UI, sends attacks, prediction
@@ -140,7 +142,7 @@ Services/controllers/modules: PascalCase. Locals and functions: camelCase. Confi
 | `StartMission` | Function | C→S | missionId | unlocked, not already in mission, arena slot free |
 | `LeaveMission` | Event | C→S | — | is member |
 | `MissionResultChoice` | Event | C→S | "replay"\|"hub" | squad leader for replay |
-| `StateSync` | Event | S→C | full or partial state table (owned, upgrades, missions) | — |
+| `StateSync` | Event | S→C (C→S empty = request snapshot) | `{tools={[id]={up={levels}}}, capLevel}`; missions later | — |
 | `BlockFX` | Event | S→C | buffer of break/hit records (§5.5) | — |
 | `CollapseFX` | Event | S→C | phase index, warn/do flag, buffer of collapsing cells | — |
 | `ProjectileFX` | Event | S→C | toolId, origin, dir, speed, serverTime (P7) | — |
@@ -681,7 +683,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - [x] P1 Destruction core — assets: hit/break SFX + crack images [ ] (requested 2026-11-05)
 - [x] P2 Bag, Crusher, money, HUD — assets: crusher/coin/UI SFX [x] (DoD passed 2026-11-05; integrated 2026-11-05)
 - [x] P3 Persistence (user: API access [x]) (DoD passed 2026-11-05)
-- [ ] P4 Tools, shop, upgrades — assets: swing SFX, icons (opt) [ ]
+- [x] P4 Tools, shop, upgrades (mechanics DoD passed 2026-11-05; user feel check pending) — assets: swing SFX, icons (opt) [ ] (requested 2026-11-05)
 - [ ] P5 Hub, missions, phased collapse → **MVP** — assets: collapse, music, jingle [ ]
 - [ ] P6 Feel, performance, balance
 - [ ] P7 Content expansion I
@@ -695,28 +697,15 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 ### Current state (overwrite every task; keep under ~15 lines)
 - Updated: 2026-11-05 by Sonnet (implementation)
-- Phase / task: **P1 DoD passed** (2026-11-05). Done: BlueprintKit, TestHut (1,032 cells at 1-stud blocks, 21×15-stud human-scale cottage, door faces +Z/spawn), StructureService, minimal MissionService (dev auto-instance), ToolService (hands), ToolController, FXController, ViewmodelController.
-- Built: Server ORDER = StructureService, MissionService, ToolService. Client ORDER = Input, Camera, Tool, FX, Viewmodel, UI. FXController: BlockFX listener, 200-part debris pool (`workspace.ClientDebris`), dust/spark emitters, crack darkening, pooled sounds (silent, ids empty), `CameraController.shake`. ViewmodelController clones `Assets/ToolModels/<id>` (Tools.viewmodel) to the camera; side Models `Right`/`Left` alternate punches; idle/walk bob, turn sway; reloads on `Equipped` change. `Assets/ToolModels/hands` = 2 sides x (Glove + Sleeve), colours Theme.Viewmodel. Swing timings in Tools rows (`swing`), offsets in FX.viewmodel.
-- Verified (DoD playtest): all 682 TestHut blocks broken via real UseTool remote (810 accepted hits); debris pool 200 total, max 34 active, 0 active after drain, 0 stray; spam 60 shots/3.5 s → 12 accepted (= 0.2975 s cooldown), 48 `cooldown`; fuzz 15 bad arg sets → 14 `args` + 1 `notMember` (Terrain); junk on other remotes harmless. Zero console errors.
-- P1 sounds integrated (2026-11-05): hit_* (brick+roof share one), break_plank/glass/brick, new `miss` slot (whiff on attacks with no block). All 8 ids load; miss + hit_roof played on real clicks; break_plank/brick/glass played via server BlockFX.
-- Crack images 1–4 integrated (2026-11-05): render on hit bricks, stage 3/4 mix, per-face offsets; zero errors.
-- Not verified: camera shake / walk bob / sway by eye; hit_plank/glass/brick by real click (same code path as hit_roof).
-- P2 task 1 done (2026-11-05, Sonnet): PlayerStateService (Server ORDER now Structure, PlayerState, Mission, Tool). Sets attrs Money/BagCount/BagCap; API getMoney/addMoney/spendMoney/bagCanFit/addToBag/getBagValue/clearBag(→value,count)/setCapLevel; overrides StructureService.hooks.canFit/addToBag. Verified in playtest: 20 adds fill cap 20, 21st rejected, value 40 = Σ count×mat value, clear → 0, spend rejects overdraw. Zero errors. Not wired yet: toast/beam (notifyBagFull exists in StructureService; check it fires Notify), Crusher, HUD. Persistence of bag/money is P3.
-- P2 task 2 done (2026-11-05): `Workspace.Crusher` placeholder (tag `Crusher`, attr CrusherId=test_plate, at (40,0.8,-10) facing +Z; parts Body/Jaw1/Jaw2/Hopper/CoinSpout/SellPad etc.) + EconomyService (Server ORDER: Structure, PlayerState, Economy, Mission, Tool): Touched on SellPad, 1.5 s debounce, clearBag then addMoney, fires SellFX(userId,count,value,crusherId) to seller + players within 120 studs. Verified: 12 bricks → $36, bag 0; re-touch with empty bag → no payout; 5 planks → +$5; zero errors. Not verified by eye: Crusher looks; SellFX has no client listener yet.
-- P2 task 3 done (2026-11-05): HUD money label (top-left, 0.4 s ticker), bag pill (bottom-centre, fill blue/orange-pulse ≥90%/red full), toasts (Notify keys via `Theme.Toasts`: BagFull, TooTough) built in StarterGui.HUD (MoneyLabel, BagPill{Fill,BagText}, Toasts{ToastTemplate}); new Theme styles MoneyLabel/BagPill/BagFill/BagText/Toast + Theme.Bag/Timing/Toasts. Verified by screenshot with forced attributes + Notify: all render, zero errors. Not verified: BagFull toast from a real full-bag break (notify path in StructureService untested end to end).
-- P2 task 4 done (2026-11-05): SellFX client in FXController (FX.sell tuning; new silent SFX slots sell_chomp, sell_coins in Config/Assets). Rubble (pooled debris) arcs pad→hopper, jaws chomp 2–5× (local tween of Jaw1/Jaw2), coin spark burst from CoinSpout, +$ floater (BillboardGui, local player only), small shake. Verified in playtest by firing SellFX (20 bricks, $1,234,567): 13 pieces in flight, jaws moved 1.2 and returned home, floater text correct, zero errors. Not verified by eye (no screenshot): look/timing; coin burst direction (+Z).
-- P2 task 5 done + DoD passed (2026-11-05): GuideController (client ORDER ... Viewmodel, Guide, UI; Beam on Terrain attachments, tuning in Theme.Guide) shows a yellow beam player→nearest `Crusher` while BagCount>=BagCap. E2E real-remote test: 22 UseTool hits filled bag 20/20, BagFull Notify fired, beam on, bag stayed 20 on extra hits; sell on pad → $25 for 20 blocks, bag 0, beam off, repeat touches paid nothing; zero errors from our scripts. Not verified by eye: beam look.
-- Crusher resized (2026-11-05, user request): model scaled to 0.6 (~9.5 studs tall, hopper rim ~7.1); SellPad resized to 9×6 at z≈-2.9 in front of the jaws; PadStripes removed. Not retested in play; eye height ~6.7 so rim sits slightly above eye (try 0.5 if the top is still hidden).
-- P2 assets integrated (2026-11-05): sell_chomp, sell_coins, ui_click (slot only, no buttons yet; wire in P4 shop), new sell_clang (jaws clang, played with each chomp). All 4 pools 6/6 loaded in playtest, SellFX fired, zero errors. Not verified by ear.
-- P3 code done (2026-11-05): `Shared/Util/DataSchema` (default + sanitize, 2 new self-tests, RunTests 13/13), `Services/DataService` (UpdateAsync load w/ session lock + stale steal, 3 retries 1/2/4 s, autosave 120±15 s, debounced priority save 10 s, leave + BindToClose saves, kick on load failure, in-memory fallback with loud warn), PlayerStateService now reads/writes data (money/bag/capLevel/stats; spend + cap upgrade = priority save). Server ORDER: Structure, Data, PlayerState, Economy, Mission, Tool. Tools/missions/equipped/settings are in the schema but not wired (P4/P5/P6).
-- P3 DoD passed (2026-11-05, API access ON, real DataStore): +500 money, forceFail=3 → save false, kept dirty, 3 attempts logged; forceFail=2 → 3rd attempt saved; stop + replay → money 500 restored, lock released (instant reload); 3 rapid spends → 1 save, no per-hit saves; sanitize self-tests pass. Zero errors. Test money reset to 0. Not tested: stale-lock steal / two servers (needs live multi-server), BindToClose with many players.
-- User confirmed (2026-11-05): slower crusher chomp is good; bag pill fix works.
-- Next step: P4 Tools, shop, upgrades (read §17 P4 first; tools/equipped/upgrade levels persist via data.tools/equipped; wire ui_click to shop buttons).
-- break_roof reuses the brick break sound (user). Sound pools are now created and preloaded at FXController.start (fixes the first-hit audio delay the user reported); all 9 pools 6/6 loaded before the first hit.
-- 1-stud switch verified (2026-11-05): RunTests 11/11, 1,032 parts spawn, real-click breaks + debris OK, zero errors. The P1 DoD numbers above were measured on the old 682-block 2-stud hut.
-- User checked 1-stud blocks: arms look fine (no viewmodel change).
-- Waiting on user: confirm the first-hit audio delay is gone.
-- Open asset requests: tooTough deferred to P7.
+- Phase / task: **P4 done** (mechanics verified; user feel check + swing-SFX batch pending). P0–P3 DoD passed earlier (P1: hit/break SFX + crack images integrated; P2: crusher/coin/ui SFX integrated; P3: DataStore verified incl. retries, lock release, no per-hit saves).
+- Studio layout: Server ORDER = Structure, Data, PlayerState, Economy, Mission, Tool. Client ORDER = Input, Camera, State, Tool, FX, Viewmodel, Guide, UI (screens HUD, Hotbar, Shop). Shared/Util: Grid, Format, Packer, BlueprintKit, DataSchema, ToolStats, TokenBucket. RunTests 17/17.
+- P4 built: PlayerStateService owns tools/upgrades/equipped (getEquipped, ownsTool, getUpgradeLevels, grantTool, setUpgradeLevel, setEquipped, getCapLevel, syncState → StateSync). ToolService: EquipTool handler, ToolStats stats (cooldown/range/damage/radius from upgrades), `ToolStats.hits` (single/sphere). EconomyService: `Purchase` (tool/upgrade/capacity; proximity to `ShopCounter` tag ≤20, lock, bucket, reasons rate/args/busy/range/unknown/owned/notOwned/maxed/funds). Client: StateController, ToolController (hold repeat for input="hold", sphere AoE preview with pooled SelectionBoxes), Hotbar (keys 1–3, wheel over owned), Shop modal (Tools/Upgrades/Bag tabs, hover/press scale, mouse unlock, Q or X closes, `Shop.open(tab?)`/`Shop.close()`), ui_click wired to shop buttons. Models `Assets/ToolModels/pickaxe|sledge` (Parts); `tilt` in Tools rows drives viewmodel lean/strike. `Workspace.ShopCounter` placeholder at (14,0.8,8) with ProximityPrompt `ShopPrompt` (hub shop comes in P5).
+- Verified (playtest): buy pickaxe/sledge/upgrades/capacity with exact costs; owned/funds/unknown/args/rate rejections; equip + junk equip dropped; tools/cap persist across stop/replay; hotbar + all 3 shop tabs by screenshot; sledge real-remote hit on the hut: 24 expected = 24 broken, 0 outside radius, bag +24; AoE preview boxes render; zero console errors.
+- Not verified: E-prompt open, shop button clicks/hover (MCP mouse can't reach the GUI), keys 1–3/wheel with real input, pickaxe hold-repeat live, ui_click by ear, swing animation + sledge size by eye, far-from-shop rejection.
+- Dev profile now owns pickaxe + sledge (+upgrades, cap level 2, ~$1.2K) from testing; no reset API yet.
+- Next step: user feel-checks P4 and gives swing SFX ids (§14 batch below), then P5 Hub, mission flow, phased collapse (read §17 P5, §8, §9 first).
+- Open asset requests: swing SFX per tool (hands/pickaxe/sledge), optional tool icons; tooTough deferred to P7.
+
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
 - 2026-11-03 — Plan created (Opus). Interview decisions D1–D11 recorded in §2.
@@ -754,3 +743,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-05 — P3: DataService save record is {data, lock={jobId,time}}; jobId = game.JobId or a GUID in Studio. Probe (GetAsync 'probe') at init decides real vs in-memory mode. Test hook: DataService.forceFail = N makes the next N store calls throw.
 - 2026-11-05 — P3 fix: after a Studio stop the old lock (other jobId) made the next load wait 15 s, so the HUD showed defaults ("Bag 0/1", full). Now Studio steals locks at once (LOAD_STEAL_AFTER=0) and the HUD hides the bag pill until BagCap exists.
 - 2026-11-05 — Crusher chomp slowed (user): FX.sell openTime 0.12→0.22, closeTime 0.08→0.15, pause 0.06→0.25 (payout time follows). Not verified by eye.
+- 2026-11-05 — P4: sledge radius 1.5 (4-stud cells) → 2.5 cells (1-stud cells; ~24 blocks on a 1-thick wall), upgrade +0.3/level; AoE preview cap 40 → 120 boxes (FX.aoePreview.max) because 1-stud areas are bigger; preview picks cells by part distance (client doesn't know the grid), same sphere rule as `ToolStats.hits`.
+- 2026-11-05 — P4: added `StateController` (client), `Util/TokenBucket`, `Util/ToolStats`; StateSync is also C→S (empty) to request a snapshot because the client may start after the server's first push. Equipped tool now lives in PlayerStateService (persisted in data.equipped).
+- 2026-11-05 — P4: hold tools repeat while Attack is held (client loop at the upgraded cooldown); `Shop.open(tab?)` kept as public API (tests, FTUE). MCP mouse/keyboard input can't drive the GUI/prompt here → manual checklist for the user. A client `require` from MCP has its own cache: test client modules via a temporary LocalScript under PlayerScripts.
+- 2026-11-05 — P4: UI frames sized with UIAspectRatioConstraint need a non-zero height scale (zero collapses to 0×0): Hotbar Size (0.2,1), shop rows (1,1).
