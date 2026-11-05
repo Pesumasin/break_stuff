@@ -679,7 +679,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 ## 19. Progress checklist (Sonnet updates)
 - [x] P0 Foundation & MCP check (user: publish [x] + Team Create [x])
 - [x] P1 Destruction core — assets: hit/break SFX + crack images [ ] (requested 2026-11-05)
-- [x] P2 Bag, Crusher, money, HUD — assets: crusher/coin/UI SFX [ ] (DoD passed 2026-11-05; batch pending)
+- [x] P2 Bag, Crusher, money, HUD — assets: crusher/coin/UI SFX [x] (DoD passed 2026-11-05; integrated 2026-11-05)
 - [ ] P3 Persistence (user: API access [ ])
 - [ ] P4 Tools, shop, upgrades — assets: swing SFX, icons (opt) [ ]
 - [ ] P5 Hub, missions, phased collapse → **MVP** — assets: collapse, music, jingle [ ]
@@ -707,12 +707,13 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - P2 task 4 done (2026-11-05): SellFX client in FXController (FX.sell tuning; new silent SFX slots sell_chomp, sell_coins in Config/Assets). Rubble (pooled debris) arcs pad→hopper, jaws chomp 2–5× (local tween of Jaw1/Jaw2), coin spark burst from CoinSpout, +$ floater (BillboardGui, local player only), small shake. Verified in playtest by firing SellFX (20 bricks, $1,234,567): 13 pieces in flight, jaws moved 1.2 and returned home, floater text correct, zero errors. Not verified by eye (no screenshot): look/timing; coin burst direction (+Z).
 - P2 task 5 done + DoD passed (2026-11-05): GuideController (client ORDER ... Viewmodel, Guide, UI; Beam on Terrain attachments, tuning in Theme.Guide) shows a yellow beam player→nearest `Crusher` while BagCount>=BagCap. E2E real-remote test: 22 UseTool hits filled bag 20/20, BagFull Notify fired, beam on, bag stayed 20 on extra hits; sell on pad → $25 for 20 blocks, bag 0, beam off, repeat touches paid nothing; zero errors from our scripts. Not verified by eye: beam look.
 - Crusher resized (2026-11-05, user request): model scaled to 0.6 (~9.5 studs tall, hopper rim ~7.1); SellPad resized to 9×6 at z≈-2.9 in front of the jaws; PadStripes removed. Not retested in play; eye height ~6.7 so rim sits slightly above eye (try 0.5 if the top is still hidden).
-- Next step: send the P2 asset batch (sell_chomp, sell_coins, UI click SFX, §14 template) to the user; then P3 Persistence (user action: enable Studio Access to API Services).
+- P2 assets integrated (2026-11-05): sell_chomp, sell_coins, ui_click (slot only, no buttons yet; wire in P4 shop), new sell_clang (jaws clang, played with each chomp). All 4 pools 6/6 loaded in playtest, SellFX fired, zero errors. Not verified by ear.
+- Next step: P3 Persistence (user action: enable Studio Access to API Services).
 - break_roof reuses the brick break sound (user). Sound pools are now created and preloaded at FXController.start (fixes the first-hit audio delay the user reported); all 9 pools 6/6 loaded before the first hit.
 - 1-stud switch verified (2026-11-05): RunTests 11/11, 1,032 parts spawn, real-click breaks + debris OK, zero errors. The P1 DoD numbers above were measured on the old 682-block 2-stud hut.
 - User checked 1-stud blocks: arms look fine (no viewmodel change).
 - Waiting on user: confirm the first-hit audio delay is gone.
-- Open asset requests: P2 batch (sell_chomp, sell_coins, UI click) to be sent; tooTough deferred to P7.
+- Open asset requests: tooTough deferred to P7.
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
 - 2026-11-03 — Plan created (Opus). Interview decisions D1–D11 recorded in §2.
@@ -746,3 +747,4 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 ### Ideas/backlog (not scheduled)
 - Hungry Rock Monster crusher variant (P13 cosmetic).
 - Rebirth/prestige, daily contracts, leaderboards (stats already saved).
+- 2026-11-05 — P2 assets: added `sell_clang` slot (user request), played at each jaw close alongside sell_chomp; `ui_click` slot added, wiring deferred to first UI buttons (P4).
