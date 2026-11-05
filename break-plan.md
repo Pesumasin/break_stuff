@@ -148,6 +148,7 @@ Services/controllers/modules: PascalCase. Locals and functions: camelCase. Confi
 | `ProjectileFX` | Event | S→C | toolId, origin, dir, speed, serverTime (P7) | — |
 | `MissionState` | Event | S→C | {missionId, phase, phases, progress 0–1, elapsed, members} | — |
 | `SellFX` | Event | S→C | playerUserId, count, value, crusherId | — |
+| `DevAction` | Function | C→S | actionId: string, arg: number? (dev panel §4.6) | `Economy.DEV_PANEL` + Studio/creator/allow-list, token bucket, known id, finite number |
 | `Notify` | Event | S→C | key, args (toasts: "BagFull", "TooTough", "Purchased"…) | — |
 | (P8) `Squad*` | Events | both | §10.2 | — |
 
@@ -179,6 +180,11 @@ Every C→S handler: `typeof` check all args, reject NaN/inf vectors, per-player
 - `print` only behind `Config.Economy.DEBUG`. `warn` for recoverable problems. No silent `pcall` except around DataStore/MemoryStore/Teleport calls, which must log failures.
 - UI: build instances in Studio and keep logic in UIController modules (one module per screen under `Controllers/UI/`). **Every colour, font, corner radius and stroke comes from `Shared/Config/Theme`** (§13). A small `Theme.apply(guiObject, styleName)` helper styles elements. No hard-coded colours or fonts in UI code or in world builders.
 
+### 4.6 Developer panel **[D]** (user request 2026-11-05)
+- Key **0** opens a dev panel (unlocks the mouse like other modals) so the user can change money and test without playtime. Data-driven: rows in `Shared/Config/DevActions`, handlers in `Services/DevService`, UI in `Controllers/UI/DevPanel`, remote `DevAction` (§4.4).
+- Access: only when `Economy.DEV_PANEL` is true AND (Studio, or the place creator, or `Economy.DEV_USER_IDS`). The server re-checks every call; the client only shows the panel if the server set the `DevPanel` attribute.
+- **Standing rule: every phase that adds something worth testing adds dev options in the same task** (e.g. P5: unlock/complete missions, skip phase, reset stars; P7: spawn materials/tools; P8: squad helpers). Add the `DevActions` row, the `DevService` handler and a §19/§20 note. Dangerous rows use `danger = true` (two-click confirm).
+- **Before launch (P12): ask the user whether to remove the dev panel** (remove `DevService`, `DevPanel`, `DevActions`, the `DevAction` remote and `DEV_PANEL`) or keep it creator-only. Never decide silently.
 ## 5. Destruction system
 
 ### 5.1 Grid model **[D]**
@@ -652,6 +658,7 @@ Touch buttons via ContextActionService (attack/hold, hotbar, interact), auto-aim
   - **Clean update shutdown**: on `BindToClose` in a live public server (not Studio), save everyone, then teleport players to a temporary reserved server that sends them straight back to a fresh public server. Mission servers save and return squads to the hub. All within the 30 s limit.
   - **Hub server size**: max 16 players (Game Settings), several spawn pads spread around the plaza to avoid crowding. Since there's no damage, the "spawn protection" is a **"Stuck? [R]" button** that respawns you at the nearest safe spawn (hub or arena), with a 5 s cooldown.
   - **Low-end check**: test with Studio graphics quality 1 and the Low debris setting. Target 30+ FPS in the MVP mission.
+  - **Dev panel (§4.6)**: ASK THE USER whether to remove it or keep it creator-only; do not decide alone.
   - **Debug cleanup**: `DEBUG=false`; remove dev auto-instances, test parts and stray prints; `RunTests` stays but is never required at runtime; the console is clean in a full playthrough.
 - **User launch checklist** (Sonnet reminds the user at this phase and tracks it in §19): game icon (512×512), 3+ thumbnails or a short trailer, title and description, the Experience Questionnaire (maturity rating), genre, public/private settings, badge icons, final asset choices, at least one playtest session with real players and economy tuning from what they observe.
 - Test: badges award once; leaderboards update; analytics events show in the Creator Dashboard (the user checks); an update shutdown moves players without data loss (live test by the user); full playthrough with zero console output.
@@ -705,6 +712,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - Dev profile now owns pickaxe + sledge (+upgrades, cap level 2, ~$1.2K) from testing; no reset API yet.
 - P4 assets integrated (2026-11-05): swing_pickaxe, swing_sledge (6/6 pooled, loaded; replace the whiff on those tools; hands keep `miss`), icon_hands (scale 0.8) / icon_pickaxe / icon_sledge on hotbar slots + shop rows (decals resolved to image ids). Not verified by ear.
 - Sledge delayed impact (2026-11-05, user): Tools.sledge `impactDelay` 0.3 (= windUp 0.2 + strike 0.1). Swing/ring/swing sound start on click (`Attacked`); spark, hit sound, UseTool fire at impact (`Impacted`, aim re-read then; cancelled on tool switch/menu). Measured 0.315 s click→impact (whiff). Hit-on-block path not re-run.
+- Dev panel (2026-11-05, §4.6): key 0, Config/DevActions rows (set/add money, bag level, unlock tools, max upgrades, reset tools, reset all), DevService handlers, PlayerStateService.setMoney/resetTools/resetProgress, `DevPanel` attr gate. Verified via remote: set/add money, cap level, unlock/max upgrades, junk args rejected; UI screenshot OK. Not verified: key 0 press, button clicks, reset rows. Server ORDER now ends with DevService; client screens HUD, Hotbar, Shop, DevPanel.
 - Next step: user feel-checks P4 (manual checklist in last report), then P5 Hub, mission flow, phased collapse (read §17 P5, §8, §9 first).
 - Open asset requests: tooTough deferred to P7.
 
