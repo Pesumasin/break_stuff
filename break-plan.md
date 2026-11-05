@@ -678,7 +678,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 ## 19. Progress checklist (Sonnet updates)
 - [x] P0 Foundation & MCP check (user: publish [x] + Team Create [x])
-- [ ] P1 Destruction core — assets: hit/break SFX [ ]
+- [x] P1 Destruction core — assets: hit/break SFX + crack images [ ] (requested 2026-11-05)
 - [ ] P2 Bag, Crusher, money, HUD — assets: crusher/coin/UI SFX [ ]
 - [ ] P3 Persistence (user: API access [ ])
 - [ ] P4 Tools, shop, upgrades — assets: swing SFX, icons (opt) [ ]
@@ -695,14 +695,14 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 ### Current state (overwrite every task; keep under ~15 lines)
 - Updated: 2026-11-05 by Opus (implementation)
-- Phase / task: P1 in progress. Done: BlueprintKit, TestHut (682 cells), StructureService, minimal MissionService (dev auto-instance), ToolService (hands), ToolController, FXController, **ViewmodelController**.
+- Phase / task: **P1 DoD passed** (2026-11-05). Done: BlueprintKit, TestHut (682 cells), StructureService, minimal MissionService (dev auto-instance), ToolService (hands), ToolController, FXController, ViewmodelController.
 - Built: Server ORDER = StructureService, MissionService, ToolService. Client ORDER = Input, Camera, Tool, FX, Viewmodel, UI. FXController: BlockFX listener, 200-part debris pool (`workspace.ClientDebris`), dust/spark emitters, crack darkening, pooled sounds (silent, ids empty), `CameraController.shake`. ViewmodelController clones `Assets/ToolModels/<id>` (Tools.viewmodel) to the camera; side Models `Right`/`Left` alternate punches; idle/walk bob, turn sway; reloads on `Equipped` change. `Assets/ToolModels/hands` = 2 sides x (Glove + Sleeve), colours Theme.Viewmodel. Swing timings in Tools rows (`swing`), offsets in FX.viewmodel.
-- Verified (playtest): debris/dust/shards, pool capped at 200 and drains; brick crack stage 2 then break; punches alternate R/L with wind-up 0.06 / strike 0.10 / recover 0.18 s (sampled glove z). Zero errors.
-- Not verified: camera shake by eye; walk bob/sway by eye; sounds (no ids).
-- Next step: P1 DoD test: break all TestHut blocks, pool count stable, spam/fuzz re-check, then ask the P1 asset batch (hit/break SFX per material, tooTough, crack images 1-3).
-- After that: P2 (PlayerStateService, bag, Crusher, HUD).
-- Waiting on user: —
-- Open asset requests: —
+- Verified (DoD playtest): all 682 TestHut blocks broken via real UseTool remote (810 accepted hits); debris pool 200 total, max 34 active, 0 active after drain, 0 stray; spam 60 shots/3.5 s → 12 accepted (= 0.2975 s cooldown), 48 `cooldown`; fuzz 15 bad arg sets → 14 `args` + 1 `notMember` (Terrain); junk on other remotes harmless. Zero console errors.
+- Not verified: camera shake / walk bob / sway by eye; sounds (no ids).
+- Next step: P2 PlayerStateService (attributes Money/BagCount/BagCap, bag ops, hooks canFit/addToBag).
+- After that: rest of P2 (D3 full-bag clamp + toast + beam, Crusher + SellFX, HUD money/bag/toasts).
+- Waiting on user: P1 asset ids (and a quick hands-on feel check).
+- Open asset requests: P1 batch — break_plank/roof/glass/brick, crack1-3 (required); hit_* (optional, one shared sound ok). tooTough deferred to P7 (no tier gating before then).
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
 - 2026-11-03 — Plan created (Opus). Interview decisions D1–D11 recorded in §2.
@@ -727,6 +727,8 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-05 — P1 FXController: shake is a position-only camera offset (default camera rebuilds position each frame, so no drift); break shake fires for every break record incl. other members' (filter by attackerSlot in P8). Pool exhaustion only recycles oldest (no particles-only fallback needed since recycling always succeeds). Hit spark + hit sound play locally on ToolController.Attacked; break/tooTough sounds come from BlockFX. Cracks find the part client-side with GetPartBoundsInBox at the cell centre (cosmetic only). Character collision group set in MissionService (moves to PlayerStateService in P2 if it fits better).
 
 - 2026-11-05 — P1 viewmodel: arms = orange sleeves (Theme action) + yellow gloves (Theme primary), from the reference arms style; "procedural spring" implemented as exponential smoothing for sway plus piecewise swing curves (no spring sim). Punches alternate only when the model has both `Right` and `Left` sides.
+
+- 2026-11-05 — P1 DoD test harness: client fires UseTool while pinning the HRP via Heartbeat CFrame (an Anchored HRP set on the client doesn't replicate → all `range` drops); remaining `range` drops (591) were teleport-replication lag, every block retried and broke. Long tests: task.spawn the loop on the client and poll `_G` stats (MCP calls time out ~60 s).
 
 ### Ideas/backlog (not scheduled)
 - Hungry Rock Monster crusher variant (P13 cosmetic).
