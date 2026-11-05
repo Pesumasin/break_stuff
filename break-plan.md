@@ -188,7 +188,7 @@ Every C→S handler: `typeof` check all args, reject NaN/inf vectors, per-player
 ## 5. Destruction system
 
 ### 5.1 Grid model **[D]**
-- Block size **1×1×1 stud** (user change 2026-11-05: 4 → 2 → 1). Blueprints are drawn at human scale: 1 cell = 1 stud, a character is ~5 studs tall (storey ≈ 9 studs, door 3×7, window 3×4). Structures are axis-aligned on a grid anchored at an `origin` CFrame (position only, no rotation in the MVP).
+- Block size **0.5×0.5×0.5 stud** (`Grid.CELL_SIZE = 0.5`; user change 2026-11-05: 4 → 2 → 1 → 0.5). Blueprints are drawn at human scale, dimensions in cells (2 cells = 1 stud), a character is ~5 studs tall (storey ≈ 9 studs, door 3×7, window 3×4). Structures are axis-aligned on a grid anchored at an `origin` CFrame (position only, no rotation in the MVP).
 - A structure is a server-side table:
   ```lua
   Structure = {
@@ -259,7 +259,7 @@ Breaking under collapse lock: a section in its 1 s collapse warning is `locked` 
 ### 5.7 Performance plan **[D]**
 | Risk | Mitigation |
 |---|---|
-| Part count | 1-stud blocks; hollow blueprints (walls 1 thick, floors), MVP ≤ 1,500 blocks/structure, later ≤ 6,000 spawned. For solid/large structures (P6/P7 if profiling demands): **surface-only spawning**. A cell only gets a Part when at least one of its 6 neighbours is empty. When a block breaks, spawn Parts for newly exposed neighbours. The grid already holds every cell, so this is a local change in StructureService. |
+| Part count | 0.5-stud blocks; hollow blueprints (walls 1 thick, floors), MVP ≤ 1,500 blocks/structure, later ≤ 6,000 spawned. For solid/large structures (P6/P7 if profiling demands): **surface-only spawning**. A cell only gets a Part when at least one of its 6 neighbours is empty. When a block breaks, spawn Parts for newly exposed neighbours. The grid already holds every cell, so this is a local change in StructureService. |
 | Spawn hitches | ≤300 parts/frame batching (§5.2). |
 | Network | Per-frame batched buffers, members only, no attributes per block, no physics parts replicated for FX. |
 | Physics | Intact blocks anchored. All debris and collapse chunks client-only, pooled and capped. Server simulates nothing physical for destruction. Projectiles are kinematic raycasts (§6.4). |
@@ -774,3 +774,4 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-05 — User: dev rows startMission/leaveMission (MissionService.devStart/devLeave; DevActions row field `travel` = fade + close panel). collapse_warn asset integrated.
 - 2026-11-05 — User: collapse comes later. m01_shed threshold 0.20 → 0.35 (Config/Missions; per-mission, §8.1 default text still says 0.20; FTUE copy "Smash 20%" in P6 must follow the mission value). Not playtest-verified by feel.
 - 2026-11-05 — P5C: hub ground is two 160-stud cylinders (replaced the 200 square plate); SpawnLocation became Hub.HubSpawn; board prompt is named ContractsPrompt (client matches by name like ShopPrompt). Locked rows toast client-side instead of calling the server.
+- 2026-11-05 — User-accepted changes (recorded retroactively): (1) cube size 1 → 0.5 stud (`Grid.CELL_SIZE = 0.5`, §5.1); (2) Shed walls/gables T=4 cells (2 studs) thick, roof 4 layers, 40×28-cell footprint (block counts ≈ ×8 vs the 1-stud era); (3) sledge `area = {sphere, radius 5 cells, depth 1, edgeDamage 0.5}` = damage falls off to 50% at the edge; (4) exposed-block optimisation live in StructureService (§5.1 surface-only: only cells with an empty neighbour get a Part, ground face doesn't count, a break exposes its neighbours); (5) new Crusher model (MeshParts Body/Frame/Jaw1/Jaw2 + Screen/Light/Beacon; sources `assets/crusher/`, preview `reference/crusher-v4-preview.png`). `ServerStorage._OptBackup` deleted.
