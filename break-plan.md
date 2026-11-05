@@ -694,15 +694,16 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - [ ] P14 Helicopter
 
 ### Current state (overwrite every task; keep under ~15 lines)
-- Updated: 2026-11-05 by Opus (implementation)
+- Updated: 2026-11-05 by Sonnet (implementation)
 - Phase / task: **P1 DoD passed** (2026-11-05). Done: BlueprintKit, TestHut (1,032 cells at 1-stud blocks, 21×15-stud human-scale cottage, door faces +Z/spawn), StructureService, minimal MissionService (dev auto-instance), ToolService (hands), ToolController, FXController, ViewmodelController.
 - Built: Server ORDER = StructureService, MissionService, ToolService. Client ORDER = Input, Camera, Tool, FX, Viewmodel, UI. FXController: BlockFX listener, 200-part debris pool (`workspace.ClientDebris`), dust/spark emitters, crack darkening, pooled sounds (silent, ids empty), `CameraController.shake`. ViewmodelController clones `Assets/ToolModels/<id>` (Tools.viewmodel) to the camera; side Models `Right`/`Left` alternate punches; idle/walk bob, turn sway; reloads on `Equipped` change. `Assets/ToolModels/hands` = 2 sides x (Glove + Sleeve), colours Theme.Viewmodel. Swing timings in Tools rows (`swing`), offsets in FX.viewmodel.
 - Verified (DoD playtest): all 682 TestHut blocks broken via real UseTool remote (810 accepted hits); debris pool 200 total, max 34 active, 0 active after drain, 0 stray; spam 60 shots/3.5 s → 12 accepted (= 0.2975 s cooldown), 48 `cooldown`; fuzz 15 bad arg sets → 14 `args` + 1 `notMember` (Terrain); junk on other remotes harmless. Zero console errors.
 - P1 sounds integrated (2026-11-05): hit_* (brick+roof share one), break_plank/glass/brick, new `miss` slot (whiff on attacks with no block). All 8 ids load; miss + hit_roof played on real clicks; break_plank/brick/glass played via server BlockFX.
 - Crack images 1–4 integrated (2026-11-05): render on hit bricks, stage 3/4 mix, per-face offsets; zero errors.
 - Not verified: camera shake / walk bob / sway by eye; hit_plank/glass/brick by real click (same code path as hit_roof).
-- Next step: P2 PlayerStateService (attributes Money/BagCount/BagCap, bag ops, hooks canFit/addToBag).
-- After that: rest of P2 (D3 full-bag clamp + toast + beam, Crusher + SellFX, HUD money/bag/toasts).
+- P2 task 1 done (2026-11-05, Sonnet): PlayerStateService (Server ORDER now Structure, PlayerState, Mission, Tool). Sets attrs Money/BagCount/BagCap; API getMoney/addMoney/spendMoney/bagCanFit/addToBag/getBagValue/clearBag(→value,count)/setCapLevel; overrides StructureService.hooks.canFit/addToBag. Verified in playtest: 20 adds fill cap 20, 21st rejected, value 40 = Σ count×mat value, clear → 0, spend rejects overdraw. Zero errors. Not wired yet: toast/beam (notifyBagFull exists in StructureService; check it fires Notify), Crusher, HUD. Persistence of bag/money is P3.
+- Next step: P2 Crusher placeholder model (§7.2: Jaw1/Jaw2/Hopper/SellPad/CoinSpout, tag `Crusher`) in the test plate + EconomyService sell (Touched on SellPad, 1.5 s debounce, clearBag then addMoney) + SellFX remote.
+- After that: rest of P2 (SellFX client, guide beam, HUD money/bag/toasts).
 - break_roof reuses the brick break sound (user). Sound pools are now created and preloaded at FXController.start (fixes the first-hit audio delay the user reported); all 9 pools 6/6 loaded before the first hit.
 - 1-stud switch verified (2026-11-05): RunTests 11/11, 1,032 parts spawn, real-click breaks + debris OK, zero errors. The P1 DoD numbers above were measured on the old 682-block 2-stud hut.
 - User checked 1-stud blocks: arms look fine (no viewmodel change).
