@@ -680,7 +680,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - [x] P0 Foundation & MCP check (user: publish [x] + Team Create [x])
 - [x] P1 Destruction core — assets: hit/break SFX + crack images [ ] (requested 2026-11-05)
 - [x] P2 Bag, Crusher, money, HUD — assets: crusher/coin/UI SFX [x] (DoD passed 2026-11-05; integrated 2026-11-05)
-- [ ] P3 Persistence (user: API access [ ])
+- [x] P3 Persistence (user: API access [x]) (DoD passed 2026-11-05)
 - [ ] P4 Tools, shop, upgrades — assets: swing SFX, icons (opt) [ ]
 - [ ] P5 Hub, missions, phased collapse → **MVP** — assets: collapse, music, jingle [ ]
 - [ ] P6 Feel, performance, balance
@@ -709,8 +709,8 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - Crusher resized (2026-11-05, user request): model scaled to 0.6 (~9.5 studs tall, hopper rim ~7.1); SellPad resized to 9×6 at z≈-2.9 in front of the jaws; PadStripes removed. Not retested in play; eye height ~6.7 so rim sits slightly above eye (try 0.5 if the top is still hidden).
 - P2 assets integrated (2026-11-05): sell_chomp, sell_coins, ui_click (slot only, no buttons yet; wire in P4 shop), new sell_clang (jaws clang, played with each chomp). All 4 pools 6/6 loaded in playtest, SellFX fired, zero errors. Not verified by ear.
 - P3 code done (2026-11-05): `Shared/Util/DataSchema` (default + sanitize, 2 new self-tests, RunTests 13/13), `Services/DataService` (UpdateAsync load w/ session lock + stale steal, 3 retries 1/2/4 s, autosave 120±15 s, debounced priority save 10 s, leave + BindToClose saves, kick on load failure, in-memory fallback with loud warn), PlayerStateService now reads/writes data (money/bag/capLevel/stats; spend + cap upgrade = priority save). Server ORDER: Structure, Data, PlayerState, Economy, Mission, Tool. Tools/missions/equipped/settings are in the schema but not wired (P4/P5/P6).
-- Verified in memory mode only (API access is OFF): load, bag/money writes, 3 rapid spends → 1 save, no per-hit saves, zero errors. NOT verified against the real DataStore: retry/forced-failure path (memory mode bypasses it), lock, restore across sessions.
-- Next step: user enables Studio Access to API Services; then test real DataStore: earn → stop → replay restores money; forceFail=3 → kept dirty; then P3 DoD.
+- P3 DoD passed (2026-11-05, API access ON, real DataStore): +500 money, forceFail=3 → save false, kept dirty, 3 attempts logged; forceFail=2 → 3rd attempt saved; stop + replay → money 500 restored, lock released (instant reload); 3 rapid spends → 1 save, no per-hit saves; sanitize self-tests pass. Zero errors. Test money reset to 0. Not tested: stale-lock steal / two servers (needs live multi-server), BindToClose with many players.
+- Next step: P4 Tools, shop, upgrades (read §17 P4 first; tools/equipped/upgrade levels persist via data.tools/equipped).
 - break_roof reuses the brick break sound (user). Sound pools are now created and preloaded at FXController.start (fixes the first-hit audio delay the user reported); all 9 pools 6/6 loaded before the first hit.
 - 1-stud switch verified (2026-11-05): RunTests 11/11, 1,032 parts spawn, real-click breaks + debris OK, zero errors. The P1 DoD numbers above were measured on the old 682-block 2-stud hut.
 - User checked 1-stud blocks: arms look fine (no viewmodel change).
