@@ -704,6 +704,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - Not verified: E-prompt open, shop button clicks/hover (MCP mouse can't reach the GUI), keys 1–3/wheel with real input, pickaxe hold-repeat live, ui_click by ear, swing animation + sledge size by eye, far-from-shop rejection.
 - Dev profile now owns pickaxe + sledge (+upgrades, cap level 2, ~$1.2K) from testing; no reset API yet.
 - P4 assets integrated (2026-11-05): swing_pickaxe, swing_sledge (6/6 pooled, loaded; replace the whiff on those tools; hands keep `miss`), icon_hands (scale 0.8) / icon_pickaxe / icon_sledge on hotbar slots + shop rows (decals resolved to image ids). Not verified by ear.
+- Sledge delayed impact (2026-11-05, user): Tools.sledge `impactDelay` 0.3 (= windUp 0.2 + strike 0.1). Swing/ring/swing sound start on click (`Attacked`); spark, hit sound, UseTool fire at impact (`Impacted`, aim re-read then; cancelled on tool switch/menu). Measured 0.315 s click→impact (whiff). Hit-on-block path not re-run.
 - Next step: user feel-checks P4 (manual checklist in last report), then P5 Hub, mission flow, phased collapse (read §17 P5, §8, §9 first).
 - Open asset requests: tooTough deferred to P7.
 
@@ -749,3 +750,4 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-05 — P4: hold tools repeat while Attack is held (client loop at the upgraded cooldown); `Shop.open(tab?)` kept as public API (tests, FTUE). MCP mouse/keyboard input can't drive the GUI/prompt here → manual checklist for the user. A client `require` from MCP has its own cache: test client modules via a temporary LocalScript under PlayerScripts.
 - 2026-11-05 — P4: UI frames sized with UIAspectRatioConstraint need a non-zero height scale (zero collapses to 0×0): Hotbar Size (0.2,1), shop rows (1,1).
 - 2026-11-05 — P4 assets: hands have no swing slot (user: reuse `miss` for a missed punch); pickaxe/sledge swing sounds play on every attack instead of `miss`. Icons carry a per-icon `scale` in Config/Assets.Images (hands 0.8).
+- 2026-11-05 — P4: heavy tools can set `impactDelay` in Tools; ToolController.Attacked(tool) = swing start, ToolController.Impacted(tool, target, hitPos) = landing (FX spark/hit/miss sounds listen to it). Server cooldown unchanged (sledge 0.85 s > delay).
