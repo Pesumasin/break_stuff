@@ -1,4 +1,4 @@
-# BREAK STUFF — Game Specification & Implementation Plan
+﻿# BREAK STUFF — Game Specification & Implementation Plan
 
 Single source of truth for building the game. Implementer: Claude Sonnet via Roblox Studio MCP. Section refs like **§6.3** point inside this file. Decisions marked **[D]** are final unless the user changes them; **[A]** are assumptions (may be revised without asking if playtesting proves them wrong; log the change in §20).
 
@@ -144,9 +144,9 @@ Services/controllers/modules: PascalCase. Locals and functions: camelCase. Confi
 | `MissionResultChoice` | Event | C→S | "replay"\|"hub" | squad leader for replay |
 | `StateSync` | Event | S→C (C→S empty = request snapshot) | `{tools={[id]={up={levels}}}, capLevel}`; missions later | — |
 | `BlockFX` | Event | S→C | buffer of break/hit records (§5.5) | — |
-| `CollapseFX` | Event | S→C | phase index, warn/do flag, buffer of collapsing cells | — |
+| `CollapseFX` | Event | S→C | (phase index, "warn") or (phase index, "do", buffer of collapsing cells, Packer format) | — |
 | `ProjectileFX` | Event | S→C | toolId, origin, dir, speed, serverTime (P7) | — |
-| `MissionState` | Event | S→C | {missionId, phase, phases, progress 0–1, elapsed, members} | — |
+| `MissionState` | Event | S→C | {missionId, state ("building"/"playing"/"collapsing"/"complete"/"rebuilding"/"left"), phase, phases, progress 0–1, startTime (server time), members, results? (on complete: time, stars, first, reward, bonus, blocks, bestTime, unlocks?, players)} | — |
 | `SellFX` | Event | S→C | playerUserId, count, value, crusherId | — |
 | `DevAction` | Function | C→S | actionId: string, arg: number? (dev panel §4.6) | `Economy.DEV_PANEL` + Studio/creator/allow-list, token bucket, known id, finite number |
 | `Notify` | Event | S→C | key, args (toasts: "BagFull", "TooTough", "Purchased"…) | — |
@@ -691,7 +691,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - [x] P2 Bag, Crusher, money, HUD — assets: crusher/coin/UI SFX [x] (DoD passed 2026-11-05; integrated 2026-11-05)
 - [x] P3 Persistence (user: API access [x]) (DoD passed 2026-11-05)
 - [x] P4 Tools, shop, upgrades (mechanics DoD passed 2026-11-05; user feel check pending) — assets: swing SFX + icons [x] (integrated 2026-11-05)
-- [ ] P5 Hub, missions, phased collapse → **MVP** — assets: collapse, music, jingle [ ]
+- [ ] P5 Hub, missions, phased collapse → **MVP** — assets: collapse, music, jingle [ ]  (A server mission core + Shed + minimal Arena1 done; B client mission UI/FX, C hub + board, D results/DoD pending)
 - [ ] P6 Feel, performance, balance
 - [ ] P7 Content expansion I
 - [ ] P8 Co-op in-server
@@ -704,17 +704,15 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 ### Current state (overwrite every task; keep under ~15 lines)
 - Updated: 2026-11-05 by Sonnet (implementation)
-- Phase / task: **P4 done** (mechanics verified; user feel check + swing-SFX batch pending). P0–P3 DoD passed earlier (P1: hit/break SFX + crack images integrated; P2: crusher/coin/ui SFX integrated; P3: DataStore verified incl. retries, lock release, no per-hit saves).
-- Studio layout: Server ORDER = Structure, Data, PlayerState, Economy, Mission, Tool. Client ORDER = Input, Camera, State, Tool, FX, Viewmodel, Guide, UI (screens HUD, Hotbar, Shop). Shared/Util: Grid, Format, Packer, BlueprintKit, DataSchema, ToolStats, TokenBucket. RunTests 17/17.
-- P4 built: PlayerStateService owns tools/upgrades/equipped (getEquipped, ownsTool, getUpgradeLevels, grantTool, setUpgradeLevel, setEquipped, getCapLevel, syncState → StateSync). ToolService: EquipTool handler, ToolStats stats (cooldown/range/damage/radius from upgrades), `ToolStats.hits` (single/sphere). EconomyService: `Purchase` (tool/upgrade/capacity; proximity to `ShopCounter` tag ≤20, lock, bucket, reasons rate/args/busy/range/unknown/owned/notOwned/maxed/funds). Client: StateController, ToolController (hold repeat for input="hold", sphere AoE preview with pooled SelectionBoxes), Hotbar (keys 1–3, wheel over owned), Shop modal (Tools/Upgrades/Bag tabs, hover/press scale, mouse unlock, Q or X closes, `Shop.open(tab?)`/`Shop.close()`), ui_click wired to shop buttons. Models `Assets/ToolModels/pickaxe|sledge` (Parts); `tilt` in Tools rows drives viewmodel lean/strike. `Workspace.ShopCounter` placeholder at (14,0.8,8) with ProximityPrompt `ShopPrompt` (hub shop comes in P5).
-- Verified (playtest): buy pickaxe/sledge/upgrades/capacity with exact costs; owned/funds/unknown/args/rate rejections; equip + junk equip dropped; tools/cap persist across stop/replay; hotbar + all 3 shop tabs by screenshot; sledge real-remote hit on the hut: 24 expected = 24 broken, 0 outside radius, bag +24; AoE preview boxes render; zero console errors.
-- Not verified: E-prompt open, shop button clicks/hover (MCP mouse can't reach the GUI), keys 1–3/wheel with real input, pickaxe hold-repeat live, ui_click by ear, swing animation + sledge size by eye, far-from-shop rejection.
-- Dev profile now owns pickaxe + sledge (+upgrades, cap level 2, ~$1.2K) from testing; no reset API yet.
-- P4 assets integrated (2026-11-05): swing_pickaxe, swing_sledge (6/6 pooled, loaded; replace the whiff on those tools; hands keep `miss`), icon_hands (scale 0.8) / icon_pickaxe / icon_sledge on hotbar slots + shop rows (decals resolved to image ids). Not verified by ear.
-- Sledge delayed impact (2026-11-05, user): Tools.sledge `impactDelay` 0.3 (= windUp 0.2 + strike 0.1). Swing/ring/swing sound start on click (`Attacked`); spark, hit sound, UseTool fire at impact (`Impacted`, aim re-read then; cancelled on tool switch/menu). Measured 0.315 s click→impact (whiff). Hit-on-block path not re-run.
-- Dev panel (2026-11-05, §4.6): key 0, Config/DevActions rows (set/add money, bag level, unlock tools, max upgrades, reset tools, reset all), DevService handlers, PlayerStateService.setMoney/resetTools/resetProgress, `DevPanel` attr gate. Verified via remote: set/add money, cap level, unlock/max upgrades, junk args rejected; UI screenshot OK. Not verified: key 0 press, button clicks, reset rows. Server ORDER now ends with DevService; client screens HUD, Hotbar, Shop, DevPanel.
-- Next step: user feel-checks P4 (manual checklist in last report), then P5 Hub, mission flow, phased collapse (read §17 P5, §8, §9 first).
-- Open asset requests: tooTough deferred to P7.
+- Phase / task: **P5 task A done** (server mission core). P0–P4 DoD passed earlier; P4 user feel check + swing-SFX still unverified by ear/eye.
+- Studio layout: Server ORDER = Structure, Data, PlayerState, Economy, Mission, Tool, Dev. Client unchanged (Input, Camera, State, Tool, FX, Viewmodel, Guide, UI: HUD, Hotbar, Shop, DevPanel). Shared/Util adds `PhaseMath`; Blueprints adds `Shed` (886 blocks: roof 392 / body 494). RunTests 18/18.
+- P5A built: MissionService (StartMission fn reasons rate/args/unknown/inMission/notReady/locked/busy; LeaveMission; MissionResultChoice replay|hub; ExitPad-tag touch). Instance = {id, def, members, leader, slot, structures, state, phase, phases, contrib, blocks, bonus}; states building → playing → collapsing → next phase | complete → rebuilding (replay). Collapse = CollapseFX warn → 1 s → `StructureService.collapseSections` (no bag reward) → CollapseFX do (buffer) → phase bonus to contributors → next phase or complete (stars via PhaseMath, `PlayerStateService.recordMission`, reward 100%/40%, results ride MissionState after RESULTS_DELAY). New: `StructureService.lockSections/collapseSections`, `build(..., centred)`, `structure.spawned`, `PlayerStateService.isLoaded/getMissionRecord/recordMission/resetMissions`; StateSync now carries `missions`. Dev auto-instance REMOVED (TestHut blueprint + TestPlate/Crusher/ShopCounter at origin stay as stand-in hub). Dev rows: Collapse current phase, Complete mission now, Reset mission records.
+- Minimal `Workspace.Arenas.Arena1` at (0,0,3000), tagged ArenaSlot: Dirt/Grass 220² plates, StructureOrigin, ArenaSpawn (+45 Z), ExitPad (tag ExitPad at (-50,.,+50)), cloned Crusher (CrusherId arena1) + ShopCounter. No fence/decor yet.
+- Verified (playtest with temp scripts, removed): start → travel → shed rises → 178 breaks → phase 1 collapse (CollapseFX warn/do, 2996 B) +$40 → 67 breaks → phase 2 → complete 3★ +$80 +$150, record saved → results → replay rebuild → LeaveMission → hub, instance + parts gone; junk/duplicate StartMission rejected; zero errors.
+- NOT built yet: all client side of P5 (StateController missions, HUD objective bar + timer pill + banners, CollapseFX client show, fade travel, Mission Board UI, Results card), hub layout §9.1 (MissionBoard tag/prompt, HubSpawn, HQ, props), arena decor, P5 asset batch. Not verified: any client consumer of MissionState, E-prompt.
+- Dev profile now has m01_shed done 3★, +$270 and bag cap level 11 from the test run: use dev panel "Reset mission records" or "RESET ALL" for a clean profile.
+- Next step: P5 task B = client: StateController missions, HUD objective bar (phase k/N + progress) + timer pill, banners (IT'S GOING / PHASE k DEMOLISHED via Notify), CollapseFX show in FXController (§5.7: ≤150 clumps, shake), fade travel on StartMission. Then C: Mission Board UI + hub (§9.1), D: Results card + DoD playtest.
+- Open asset requests: tooTough deferred to P7; P5 batch (collapse rumble, victory jingle, music, clock icon) after DoD.
 
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
@@ -762,3 +760,4 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-05 — User: sell_clang volume 0.7 → 0.35 (50%).
 - 2026-11-05 — P4 fix (user report): shop list didn't scroll (rows were height-scale + aspect, so the canvas had nothing to measure) → rows get a pixel height computed from list width / 6.5 in Shop.refresh, no aspect constraint; refresh on list resize. Pickaxe auto-swung after buying: the button release over a GUI never reached the hold flag → ToolController now polls IsMouseButtonPressed each frame and ignores Begin while the mouse is unlocked. Scroll verified (canvas 672 > window 380); stuck-hold fix by code only.
 - 2026-11-05 — User request: developer panel (key 0) for money and future options; standing rule + P12 "ask before removing" recorded in §4.6. Authorization = Studio / game.CreatorId / Economy.DEV_USER_IDS (group-owned games: Studio or allow-list only).
+- 2026-11-05 — P5A: Shed is 886 blocks (§8.4 ~1,400 was a 4-stud estimate); phases = #blueprint sections (roof → body); breaks needed = ceil(alive × threshold) (PhaseMath). Breaks count only while state=="playing"; sections are locked while building so nothing breaks during the rising spawn. One arena slot exists, so a second solo player gets "busy" until P8 ArenaSlots. MissionId attribute = mission def id (not instance id). Results payload per member rides MissionState; "bag earnings this run" omitted (client can diff Money). Dev rush: `instance.devRush` chains collapses.
