@@ -703,8 +703,9 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - Not verified: camera shake / walk bob / sway by eye; hit_plank/glass/brick by real click (same code path as hit_roof).
 - Next step: P2 PlayerStateService (attributes Money/BagCount/BagCap, bag ops, hooks canFit/addToBag).
 - After that: rest of P2 (D3 full-bag clamp + toast + beam, Crusher + SellFX, HUD money/bag/toasts).
-- Waiting on user: break_roof id; quick hands-on feel check.
-- Open asset requests: break_roof (silent until given). tooTough deferred to P7.
+- break_roof reuses the brick break sound (user). Sound pools are now created and preloaded at FXController.start (fixes the first-hit audio delay the user reported); all 9 pools 6/6 loaded before the first hit.
+- Waiting on user: confirm the first-hit delay is gone; quick hands-on feel check.
+- Open asset requests: none (tooTough deferred to P7).
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
 - 2026-11-03 — Plan created (Opus). Interview decisions D1–D11 recorded in §2.
