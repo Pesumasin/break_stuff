@@ -694,15 +694,13 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - [ ] P14 Helicopter
 
 ### Current state (overwrite every task; keep under ~15 lines)
-- Updated: 2026-11-04 by Opus (implementation)
-- Phase / task: P1 in progress. Done: Util.BlueprintKit, Blueprints.TestHut (682 cells at 2-stud grid, sections roof 272/body 410), StructureService, minimal MissionService (dev auto-instance only).
-- P0 built: §4.2 folders; Config (Theme, Materials, Tools, Upgrades, Economy, Missions, Assets, FX); Util Grid/Format/Packer; Tests.RunTests; 12 MVP Remotes; collision groups; first-person + V toggle; Lighting; TestPlate; HUD (Crosshair, MouseHint); client/server bootstraps.
-- P1 so far: Server ORDER = StructureService, MissionService. Dev instance per player builds TestHut at Economy.DEV_INSTANCE.origin (-16, 0.8, -48), rising spawn ≤300/frame, patterned-noise colours. applyDamage/breakCell/BlockFX flush per Heartbeat to members. RunTests 11/11 (added blueprintKitShapes, blueprintsValid).
-- Verified (server playtest via temp Script): 682 parts spawn after the 2-stud switch (earlier checks at 4 studs: brick 2 hits, plank 1; 3 FX records flushed; D3 clamp keeps hp 1 + BagFull Notify; part attribute M set).
-- Half-done / unwired / untested: no client yet — BlockFX is fired but nothing listens; no UseTool handler. Characters not yet in `Players` collision group.
-- Not yet in tree by design: Util.ToolStats (P4), ProjectileFX (P7), Squad* remotes (P8), onBreak hook table (P7, with TNT).
-- Next step: P1 — ToolService (UseTool validation §6.3 for hands, rate limit, server log counter) + ToolController (targeting raycast, outline, cooldown ring, sends UseTool).
-- After that: viewmodel arms + punch anim; FXController (debris pool, dust, shake, crack darkening, BlockFX listener); Players collision group; empty SFX/crack slots in Config/Assets.
+- Updated: 2026-11-05 by Opus (implementation)
+- Phase / task: P1 in progress. Done: BlueprintKit, TestHut (682 cells, 2-stud grid), StructureService, minimal MissionService (dev auto-instance), ToolService (hands), ToolController (target raycast, outline, cooldown ring).
+- Built: Server ORDER = StructureService, MissionService, ToolService. Client ORDER = Input, Camera, Tool, UI. InputController action `Attack` (MouseButton1). StarterGui.HUD.CooldownRing (shrinking ring, Theme style CooldownRing). Theme.Outline. ToolService sets attribute Equipped="hands"; counters `ToolService.accepted/dropped[reason]`, DEBUG print every 10 s on change.
+- Verified (playtest): outline follows the crosshair; clicks break planks (hole through wall); fuzzed args dropped (args/notMember/range); 46 fast fires → 10 rate drops; ~30/s spam on one block → 1 accepted + cooldown drops. RunTests 11/11. Zero errors.
+- Half-done / unwired / untested: client ignores BlockFX (no debris/dust/shake/cracks yet); no viewmodel arms; no hit spark/sound. Characters not yet in `Players` collision group.
+- Next step: P1 — FXController: BlockFX listener, debris pool (3 s rubble), dust, break shake, crack darkening; Players/Debris collision groups on characters; empty SFX + crack image slots in Config/Assets.
+- After that: viewmodel arms + punch anim (ViewmodelController), then P1 DoD test (break all blocks, pool count stable) and the P1 asset request.
 - Waiting on user: —
 - Open asset requests: —
 
@@ -723,6 +721,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-04 — P1: StructureService API works on a structure (instance.structures[1]), not the instance: `build(instance, blueprintId, origin)`, `applyDamage(structure, attacker, hits, toolId)`, `destroy`. Section collapse lock = `structure.lockedSections[section]` (not per-cell `locked`). Cross-service calls via `StructureService.hooks` {canFit, addToBag, onBroken}, overwritten by PlayerStateService (P2) / MissionService (P5).
 - 2026-11-05 — User change: block size 4 → 2 studs (Grid.CELL_SIZE = 2). TestHut redrawn at the same 32×24-stud footprint (682 blocks); BlueprintKit:door now takes width/height. 4× more blocks per area → P6 economy pass must rescale material values/bag caps; P7+ block counts in §8.4 are still 4-stud estimates (≈×4); sledge radius in cells now covers half the studs, revisit in P4.
 - 2026-11-05 — Team Create confirmed: edit-mode DataModel has a NetworkClient with a replicator (only present in a Team Create session). Check: `game:FindFirstChildOfClass("NetworkClient") ~= nil` in Edit.
+- 2026-11-05 — P1: cooldown ring is a ring that shrinks onto the dot and fades (TweenService), not a radial sweep (radial needs half-mask frames; revisit in P6 polish if wanted). Hands attack on click only (no hold-repeat), per §6.1 input="click". ToolService checks cooldown before membership, so spam at a just-broken part logs as `cooldown` then `notMember`.
 - 2026-11-04 — MCP execute_luau in a playtest has its own require cache: test live services by parenting a temporary Script to ServerScriptService that prints results, then read the console.
 
 ### Ideas/backlog (not scheduled)
