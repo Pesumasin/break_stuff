@@ -705,7 +705,8 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - After that: rest of P2 (D3 full-bag clamp + toast + beam, Crusher + SellFX, HUD money/bag/toasts).
 - break_roof reuses the brick break sound (user). Sound pools are now created and preloaded at FXController.start (fixes the first-hit audio delay the user reported); all 9 pools 6/6 loaded before the first hit.
 - 1-stud switch verified (2026-11-05): RunTests 11/11, 1,032 parts spawn, real-click breaks + debris OK, zero errors. The P1 DoD numbers above were measured on the old 682-block 2-stud hut.
-- Waiting on user: confirm the first-hit delay is gone; hands-on feel check of 1-stud blocks (viewmodel arms may now look oversized).
+- User checked 1-stud blocks: arms look fine (no viewmodel change).
+- Waiting on user: confirm the first-hit audio delay is gone.
 - Open asset requests: none (tooTough deferred to P7).
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
