@@ -180,7 +180,7 @@ Every C→S handler: `typeof` check all args, reject NaN/inf vectors, per-player
 ## 5. Destruction system
 
 ### 5.1 Grid model **[D]**
-- Block size **4×4×4 studs** (chunky, fewer parts). Structures are axis-aligned on a grid anchored at an `origin` CFrame (position only, no rotation in the MVP).
+- Block size **2×2×2 studs** (user change 2026-11-05; was 4). Structures are axis-aligned on a grid anchored at an `origin` CFrame (position only, no rotation in the MVP).
 - A structure is a server-side table:
   ```lua
   Structure = {
@@ -251,11 +251,11 @@ Breaking under collapse lock: a section in its 1 s collapse warning is `locked` 
 ### 5.7 Performance plan **[D]**
 | Risk | Mitigation |
 |---|---|
-| Part count | 4-stud blocks; hollow blueprints (walls 1 thick, floors), MVP ≤ 1,500 blocks/structure, later ≤ 6,000 spawned. For solid/large structures (P6/P7 if profiling demands): **surface-only spawning**. A cell only gets a Part when at least one of its 6 neighbours is empty. When a block breaks, spawn Parts for newly exposed neighbours. The grid already holds every cell, so this is a local change in StructureService. |
+| Part count | 2-stud blocks; hollow blueprints (walls 1 thick, floors), MVP ≤ 1,500 blocks/structure, later ≤ 6,000 spawned. For solid/large structures (P6/P7 if profiling demands): **surface-only spawning**. A cell only gets a Part when at least one of its 6 neighbours is empty. When a block breaks, spawn Parts for newly exposed neighbours. The grid already holds every cell, so this is a local change in StructureService. |
 | Spawn hitches | ≤300 parts/frame batching (§5.2). |
 | Network | Per-frame batched buffers, members only, no attributes per block, no physics parts replicated for FX. |
 | Physics | Intact blocks anchored. All debris and collapse chunks client-only, pooled and capped. Server simulates nothing physical for destruction. Projectiles are kinematic raycasts (§6.4). |
-| Collapse | Chunk collapse cells into 2×2×2-cell clumps (8-stud cubes). Cap 150 physics bodies per collapse; overflow becomes dust bursts plus a quick shrink. Bodies fade out by 4 s. |
+| Collapse | Chunk collapse cells into 2×2×2-cell clumps (4-stud cubes). Cap 150 physics bodies per collapse; overflow becomes dust bursts plus a quick shrink. Bodies fade out by 4 s. |
 | Particles/sounds | Pools, `Emit()` not continuous emitters, concurrency caps. |
 | UI | Event-driven updates via attribute signals. No per-frame text updates except active tweens and the objective bar while it animates. |
 | Server CPU | Grid ops are O(cells affected). Target: StructureService + MissionService < 1.5 ms/frame under a rocket spam test (MicroProfiler / `debug.profilebegin` labels). |
@@ -379,7 +379,7 @@ All values live in `Config/Economy` and `Config/Tools`. Phase bonuses and comple
 ### 8.4 Campaign roadmap **[A]**
 | # | Mission | Blocks | Phases | Highlights | Phase |
 |---|---|---|---|---|---|
-| 1 | Grandma's Shed | ~350 | 2 (roof → rest) | planks, roof, glass, brick chimney | MVP |
+| 1 | Grandma's Shed | ~1,400 | 2 (roof → rest) | planks, roof, glass, brick chimney | MVP |
 | 2 | Suburban House | ~900 | 3 | brick walls, garage, pool fence | P7 |
 | 3 | Corner Store | ~1,500 | 3 | concrete, big shop windows, TNT crate stash | P7 |
 | 4 | Medieval Castle | ~3,000 | 4 | concrete "stone", towers collapse separately | P7 |
@@ -493,7 +493,7 @@ All of §6.3, plus a membership check on every structure op. A player can only t
 
 **Environment**: parts-based chunky terrain (no smooth Terrain), plateau steps of 4 studs. **Ground blocks are two-tone**: a dirt-coloured body plus a thin (0.8-stud) grass-green cap part on top (static decoration only; destructible blocks stay one Part each), blocky trees (brown trunk plus 2–3 green cubes), fences, cones, barrels. Lighting: `Lighting.Technology=ShadowMap`, bright midday, Atmosphere density 0.25 with a light blue haze, ColorCorrection saturation +0.15 / contrast +0.05, subtle Bloom (intensity 0.4, threshold 0.95). No realism, no grime.
 
-**Structures/blocks**: 4-stud cube grid, SmoothPlastic, patterned noise colour blotches plus slight per-block jitter (§5.2), dark crack overlays on damaged blocks, rubble cubes that settle briefly, readable silhouettes (gable roofs, big windows, chimneys, flags). Details are made of blocks too (a door = 1×2 cells of a different colour). Every structure has at least 3 materials for visual and economic variety.
+**Structures/blocks**: 2-stud cube grid, SmoothPlastic, patterned noise colour blotches plus slight per-block jitter (§5.2), dark crack overlays on damaged blocks, rubble cubes that settle briefly, readable silhouettes (gable roofs, big windows, chimneys, flags). Details are made of blocks too (a door = 2×3 cells of a different colour). Every structure has at least 3 materials for visual and economic variety.
 
 **Equipment**: oversized, toy-like proportions (head 1.5× realistic), 2–3 colours each, bold primary accent (pickaxe: wood handle, grey head with yellow band; sledge: red head; chainsaw: orange body; rocket: green tube with yellow stripes; laser: white/cyan sci-fi). Built from Parts first. Meshes only via §14.
 
@@ -544,7 +544,7 @@ Expected batches (ask only when the feature is ready): P1 hit/break SFX per mate
 ---
 
 ## 15. MVP definition (end of P5) **[D]**
-Included: first-person camera and viewmodel; hub plus 1 arena; mission 1 (Grandma's Shed, ~350 blocks, 2 phases with collapse, completion, replay, stars); materials plank/roof/glass/brick; tools hands/pickaxe/sledge with 2 upgrade tracks each; bag with capacity upgrades; one Crusher model (in hub and arena); shop UI; mission board UI; HUD (money, bag, objective, hotbar, toasts); server-validated everything; DataStore persistence; debris/dust/shake FX; asset slots registered (sounds as the user supplies them).
+Included: first-person camera and viewmodel; hub plus 1 arena; mission 1 (Grandma's Shed, ~1,400 blocks, 2 phases with collapse, completion, replay, stars); materials plank/roof/glass/brick; tools hands/pickaxe/sledge with 2 upgrade tracks each; bag with capacity upgrades; one Crusher model (in hub and arena); shop UI; mission board UI; HUD (money, bag, objective, hotbar, toasts); server-validated everything; DataStore persistence; debris/dust/shake FX; asset slots registered (sounds as the user supplies them).
 
 Excluded until later: other tools, materials and missions; co-op; reserved servers; mobile; monetization; vehicles; tutorial and settings menu (P6); badges, leaderboards, analytics (P12); daily jobs; rebirth.
 
@@ -695,15 +695,15 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 ### Current state (overwrite every task; keep under ~15 lines)
 - Updated: 2026-11-04 by Opus (implementation)
-- Phase / task: P1 in progress. Done: Util.BlueprintKit, Blueprints.TestHut (156 cells, sections roof/body), StructureService, minimal MissionService (dev auto-instance only).
+- Phase / task: P1 in progress. Done: Util.BlueprintKit, Blueprints.TestHut (682 cells at 2-stud grid, sections roof 272/body 410), StructureService, minimal MissionService (dev auto-instance only).
 - P0 built: §4.2 folders; Config (Theme, Materials, Tools, Upgrades, Economy, Missions, Assets, FX); Util Grid/Format/Packer; Tests.RunTests; 12 MVP Remotes; collision groups; first-person + V toggle; Lighting; TestPlate; HUD (Crosshair, MouseHint); client/server bootstraps.
 - P1 so far: Server ORDER = StructureService, MissionService. Dev instance per player builds TestHut at Economy.DEV_INSTANCE.origin (-16, 0.8, -48), rising spawn ≤300/frame, patterned-noise colours. applyDamage/breakCell/BlockFX flush per Heartbeat to members. RunTests 11/11 (added blueprintKitShapes, blueprintsValid).
-- Verified (server playtest via temp Script): 156 parts spawn; brick 2 hits, plank 1; 3 FX records flushed; D3 clamp keeps hp 1 + BagFull Notify; part attribute M set.
+- Verified (server playtest via temp Script): 682 parts spawn after the 2-stud switch (earlier checks at 4 studs: brick 2 hits, plank 1; 3 FX records flushed; D3 clamp keeps hp 1 + BagFull Notify; part attribute M set).
 - Half-done / unwired / untested: no client yet — BlockFX is fired but nothing listens; no UseTool handler. Characters not yet in `Players` collision group.
 - Not yet in tree by design: Util.ToolStats (P4), ProjectileFX (P7), Squad* remotes (P8), onBreak hook table (P7, with TNT).
 - Next step: P1 — ToolService (UseTool validation §6.3 for hands, rate limit, server log counter) + ToolController (targeting raycast, outline, cooldown ring, sends UseTool).
 - After that: viewmodel arms + punch anim; FXController (debris pool, dust, shake, crack darkening, BlockFX listener); Players collision group; empty SFX/crack slots in Config/Assets.
-- Waiting on user: confirm Team Create is on.
+- Waiting on user: confirm Team Create is on (scripts survived a Studio reopen on 2026-11-05, so cloud saving works).
 - Open asset requests: —
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
@@ -721,6 +721,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-04 — P0 DoD passed (user verified mouse lock). Studio MCP studio_id changes when the place is reopened: call list_roblox_studios each session.
 - 2026-11-04 — P1: BlueprintKit is a builder (`BlueprintKit.new(sx,sy,sz,sections)`, `:box/:floor/:hollowBox/:gableRoof/:windowRow/:door/:fillMaterial/:build`); later calls overwrite; mat=nil clears; build() sorts bottom-first.
 - 2026-11-04 — P1: StructureService API works on a structure (instance.structures[1]), not the instance: `build(instance, blueprintId, origin)`, `applyDamage(structure, attacker, hits, toolId)`, `destroy`. Section collapse lock = `structure.lockedSections[section]` (not per-cell `locked`). Cross-service calls via `StructureService.hooks` {canFit, addToBag, onBroken}, overwritten by PlayerStateService (P2) / MissionService (P5).
+- 2026-11-05 — User change: block size 4 → 2 studs (Grid.CELL_SIZE = 2). TestHut redrawn at the same 32×24-stud footprint (682 blocks); BlueprintKit:door now takes width/height. 4× more blocks per area → P6 economy pass must rescale material values/bag caps; P7+ block counts in §8.4 are still 4-stud estimates (≈×4); sledge radius in cells now covers half the studs, revisit in P4.
 - 2026-11-04 — MCP execute_luau in a playtest has its own require cache: test live services by parenting a temporary Script to ServerScriptService that prints results, then read the console.
 
 ### Ideas/backlog (not scheduled)
