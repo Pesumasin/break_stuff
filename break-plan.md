@@ -238,7 +238,7 @@ Breaking under collapse lock: a section in its 1 s collapse warning is `locked` 
 ### 5.5 Replication & FX batching
 - Part destruction replicates automatically. **Do not** also replicate per-block state via attributes.
 - `BlockFX` is flushed once per Heartbeat per instance, `FireClient` to each **member** (non-members get nothing). Buffer records, 8 bytes each: `x:u8 y:u8 z:u8 (cell coords)`, `mat:u8`, `kind:u8 (0=hit,1=break,2=tooTough)`, `hpFrac:u8`, `attackerSlot:u8 (member index 1–4)`, `pad:u8`, plus a header with the structure origin. `Util.Packer` owns the format plus a self-test.
-- **Cracks (standard damage look)**: hits on multi-hit blocks show crack stages 1–3 (stage = `ceil((1-hpFrac)*3)`). Each stage puts a client-only dark crack `Texture` on all 6 faces (one shared asset per stage, only on damaged blocks, removed on break) and darkens the colour by `stage*0.08`. Until the user supplies the crack images (required asset, P1 batch), darkening alone is the placeholder.
+- **Cracks (standard damage look)**: one-hit blocks never crack. Hits on multi-hit blocks show crack stages 1–4 (user rule 2026-11-05): stage = `ceil((1-hpFrac)*4) + 1 + hashBit(cell)`, clamped 1–4, so the last hit before a break shows heavy cracks (2-hit blocks show 3 or 4). Each stage puts a client-only dark crack `Texture` on all 6 faces (one shared image per stage, random tile offset per face for variety, removed on break) and darkens the colour by `stage*0.06`.
 - Budget: ≤ 2 KB/s per client in normal play; rocket bursts may spike to ~1 KB per event. Profile in P6.
 
 ### 5.6 Client feel & prediction
@@ -699,11 +699,12 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - Built: Server ORDER = StructureService, MissionService, ToolService. Client ORDER = Input, Camera, Tool, FX, Viewmodel, UI. FXController: BlockFX listener, 200-part debris pool (`workspace.ClientDebris`), dust/spark emitters, crack darkening, pooled sounds (silent, ids empty), `CameraController.shake`. ViewmodelController clones `Assets/ToolModels/<id>` (Tools.viewmodel) to the camera; side Models `Right`/`Left` alternate punches; idle/walk bob, turn sway; reloads on `Equipped` change. `Assets/ToolModels/hands` = 2 sides x (Glove + Sleeve), colours Theme.Viewmodel. Swing timings in Tools rows (`swing`), offsets in FX.viewmodel.
 - Verified (DoD playtest): all 682 TestHut blocks broken via real UseTool remote (810 accepted hits); debris pool 200 total, max 34 active, 0 active after drain, 0 stray; spam 60 shots/3.5 s → 12 accepted (= 0.2975 s cooldown), 48 `cooldown`; fuzz 15 bad arg sets → 14 `args` + 1 `notMember` (Terrain); junk on other remotes harmless. Zero console errors.
 - P1 sounds integrated (2026-11-05): hit_* (brick+roof share one), break_plank/glass/brick, new `miss` slot (whiff on attacks with no block). All 8 ids load; miss + hit_roof played on real clicks; break_plank/brick/glass played via server BlockFX.
+- Crack images 1–4 integrated (2026-11-05): render on hit bricks, stage 3/4 mix, per-face offsets; zero errors.
 - Not verified: camera shake / walk bob / sway by eye; hit_plank/glass/brick by real click (same code path as hit_roof).
 - Next step: P2 PlayerStateService (attributes Money/BagCount/BagCap, bag ops, hooks canFit/addToBag).
 - After that: rest of P2 (D3 full-bag clamp + toast + beam, Crusher + SellFX, HUD money/bag/toasts).
-- Waiting on user: break_roof id; whether crack overlay images are wanted (user said "no crack sound effects" — ambiguous); quick hands-on feel check.
-- Open asset requests: break_roof (silent until given); crack1-3 images (darkening placeholder meanwhile). tooTough deferred to P7.
+- Waiting on user: break_roof id; quick hands-on feel check.
+- Open asset requests: break_roof (silent until given). tooTough deferred to P7.
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
 - 2026-11-03 — Plan created (Opus). Interview decisions D1–D11 recorded in §2.
@@ -731,6 +732,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 - 2026-11-05 — P1 DoD test harness: client fires UseTool while pinning the HRP via Heartbeat CFrame (an Anchored HRP set on the client doesn't replicate → all `range` drops); remaining `range` drops (591) were teleport-replication lag, every block retried and broke. Long tests: task.spawn the loop on the client and poll `_G` stats (MCP calls time out ~60 s).
 - 2026-11-05 — P1 assets from user: new SFX slot `miss` (Config/Assets) played by FXController.onAttacked when the attack hits no block (also world parts like the ground). hit_brick and hit_roof share one sound. break_brick clip is 3.1 s (long tail; fine while pooled ×6).
+- 2026-11-05 — User: 4 crack stages (FX.crackStages 4, crackDarken 0.08 → 0.06), stage rule in §5.5. User gave Decal ids (asset type 13); Textures need the Image id → resolved via InsertService:LoadAsset(decalId) → Decal.Texture. Always check AssetTypeId when the user gives image ids.
 
 ### Ideas/backlog (not scheduled)
 - Hungry Rock Monster crusher variant (P13 cosmetic).
