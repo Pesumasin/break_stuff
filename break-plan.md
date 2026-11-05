@@ -691,7 +691,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - [x] P2 Bag, Crusher, money, HUD — assets: crusher/coin/UI SFX [x] (DoD passed 2026-11-05; integrated 2026-11-05)
 - [x] P3 Persistence (user: API access [x]) (DoD passed 2026-11-05)
 - [x] P4 Tools, shop, upgrades (mechanics DoD passed 2026-11-05; user feel check pending) — assets: swing SFX + icons [x] (integrated 2026-11-05)
-- [ ] P5 Hub, missions, phased collapse → **MVP** — assets: collapse, music, jingle [ ]  (A server mission core + Shed + minimal Arena1 done; B client mission HUD/FX done; C hub + Mission Board done; D results card/DoD pending)
+- [ ] P5 Hub, missions, phased collapse → **MVP** — assets: collapse, music, jingle [ ]  (A server mission core + Shed + minimal Arena1 done; B client mission HUD/FX done; C hub + Mission Board done; D results card done; DoD playtest pending)
 - [ ] P6 Feel, performance, balance
 - [ ] P7 Content expansion I
 - [ ] P8 Co-op in-server
@@ -704,7 +704,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 ### Current state (overwrite every task; keep under ~15 lines)
 - Updated: 2026-11-05 by Sonnet (implementation)
-- Phase / task: **P5 task C done** (hub layout + Mission Board UI; A server core, B client HUD/FX before it). `complete()` pushes MissionState{state="complete"} at once (no results); results payload follows after RESULTS_DELAY. P0–P4 DoD passed earlier; P4 user feel check + swing-SFX still unverified by ear/eye.
+- Phase / task: **P5 task D done** (Results card; A server core, B client HUD/FX, C hub + board before it). `complete()` pushes MissionState{state="complete"} at once (no results); results payload follows after RESULTS_DELAY. P0–P4 DoD passed earlier; P4 user feel check + swing-SFX still unverified by ear/eye.
 - Studio layout: Server ORDER = Structure, Data, PlayerState, Economy, Mission, Tool, Dev. Client (Input, Camera, State, Tool, FX, Viewmodel, Guide, UI: HUD, Hotbar, Shop, MissionBoard, DevPanel).
 - P5C built: `Workspace.Hub` = Ground, Boundary (32 invisible wall segments, R80), HubSpawn (old SpawnLocation, (0,1.3,20)), HQ (sign), MissionBoard (tag `MissionBoard`, `Face.ContractsPrompt` "Contracts"), MissionGate arch (z=55), Props. TestPlate Grass/Dirt are now 160-stud cylinders; Crusher (40,-10) + ShopCounter (14,8) stay in the hub. `UI/MissionBoard` + StarterGui `MissionBoard` (Shop layout clone; rows: name, client+blurb, `n/3 STARS · BEST m:ss`, START/REPLAY/LOCKED). Start → StartMission invoke → ok: close + `HUD.fadeOut()`; fail toasts MissionLocked/Busy/Error. `Format.clock` added.
 - Verified (playtest): ContractsPrompt:InputHoldBegin near the board opens it (mouse unlocks), 1 row with record text; StartMission → arena (0,5,3045) → LeaveMission → HubSpawn; zero errors. NOT checked by eye (screen_capture needs a capture_id I lack; MCP can't click GUI): hub/board look, button click path. RunTests not re-run (only `Format.clock` added). Shared/Util adds `PhaseMath`; Blueprints adds `Shed` (886 blocks: roof 392 / body 494). RunTests 18/18.
@@ -713,9 +713,10 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - Verified (playtest with temp scripts, removed): start → travel → shed rises → 178 breaks → phase 1 collapse (CollapseFX warn/do, 2996 B) +$40 → 67 breaks → phase 2 → complete 3★ +$80 +$150, record saved → results → replay rebuild → LeaveMission → hub, instance + parts gone; junk/duplicate StartMission rejected; zero errors.
 - P5B built: `StateController.getMission()` + `MissionChanged` event (payload incl. `{state="left"}`); HUD gains ObjectivePanel (Title "PHASE k/N" / "BUILDING...", Track/Fill, red while collapsing), TimerPill (m:ss from startTime, freezes at complete), Banner (IT'S GOING! on CollapseFX warn; PHASE k DEMOLISHED! +$X on Notify "PhaseDemolished"), Fade curtain (`HUD.fadeOut()` blacks out; clears on MissionState building/rebuilding/left or after Theme.Mission.fadeFailsafe). FXController: CollapseFX warn (shake ramp, `collapse_warn` sfx) and do (4³-cell clumps, ≤150 pooled bodies, rest dust, shake, fade 4 s, `collapse_do` sfx). Theme.Mission/Banners/styles, FX.collapse tuning, two empty SFX slots added.
 - Verified (playtest, client): StartMission drives panel + timer; skipPhase → warn banner, 31 clumps then all back in the pool by 6.8 s, phase 2 progress reset; fake Notify shows "+$80"; complete freezes timer + hides panel; LeaveMission fades in; zero errors. NOT checked by eye (no screenshots): HUD layout/size.
-- NOT built yet: Results card (client UI for the results payload on MissionState; Replay/Back to HQ via MissionResultChoice), arena decor, P5 asset batch, DoD playtest.
+- P5D built: StarterGui `Results` + `UI/Results` (in UIController SCREENS; Theme.Results). Opens on MissionState.results: title, 3 stars revealed in turn, Time/Best/Blocks/Phase bonuses/Completion reward, note (unlock name if that mission exists in Config/Missions, else FIRST CLEAR!), REPLAY (slot-1 leader only) / BACK TO HQ via MissionResultChoice; closes on rebuilding/left. Verified (playtest): complete → card text correct, replay → rebuilding→building→playing, hub → left + HubSpawn, zero errors. NOT checked: by eye, real button clicks (firesignal unavailable). Bonus/blocks show $0/0 in dev-complete runs (no breaks).
+- NOT built yet: arena decor, P5 asset batch, DoD playtest.
 - Dev profile now has m01_shed done 3★, +$270 and bag cap level 11 from the test run: use dev panel "Reset mission records" or "RESET ALL" for a clean profile.
-- Next step: P5 task D = Results card (time, blocks, bonuses, reward, stars; Replay for leader / Back to HQ), then the P5 DoD 15-minute playtest + user playtest request (ask the user to eyeball hub + Mission Board).
+- Next step: P5 DoD 15-minute playtest (real breaks: hub → shed → 2 collapses → results → replay → hub; leave mid-mission) + user playtest request (eyeball hub, Mission Board, Results card, HUD).
 - Open asset requests: tooTough deferred to P7; P5 batch (collapse_warn/collapse_do slots exist, victory jingle, music, clock icon) after DoD.
 
 
@@ -747,6 +748,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-05 — P1 assets from user: new SFX slot `miss` (Config/Assets) played by FXController.onAttacked when the attack hits no block (also world parts like the ground). hit_brick and hit_roof share one sound. break_brick clip is 3.1 s (long tail; fine while pooled ×6).
 - 2026-11-05 — User: 4 crack stages (FX.crackStages 4, crackDarken 0.08 → 0.06), stage rule in §5.5. User gave Decal ids (asset type 13); Textures need the Image id → resolved via InsertService:LoadAsset(decalId) → Decal.Texture. Always check AssetTypeId when the user gives image ids.
 - 2026-11-05 — User change: block size 2 → 1 stud (8 per old block), TestHut smaller and human-scale (21×15 footprint, 9-stud walls, 1 cell thick → 1,032 blocks). Scaled with it: FX.colorNoise.scale 0.18 → 0.09 (same blotch size in studs), debris 0.4–0.8, shard 0.1, dust 0.6–1.5, collapse clump 4 cells. Economy origin (-10.5, 0.8, -43.5). Tool ranges (studs) unchanged; sledge r=1.5 cells is now tiny → set in studs-equivalent in P4. §8.4 block counts are still 4-stud estimates.
+- 2026-11-05 — P5D: Missions.unlocks is a single id string (not a list); Results card handles both and hides unlocks pointing at unbuilt missions.
 
 ### Ideas/backlog (not scheduled)
 - Hungry Rock Monster crusher variant (P13 cosmetic).
