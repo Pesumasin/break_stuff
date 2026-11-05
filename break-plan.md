@@ -677,7 +677,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 ---
 
 ## 19. Progress checklist (Sonnet updates)
-- [x] P0 Foundation & MCP check (user: publish [x] + Team Create [ ] unconfirmed)
+- [x] P0 Foundation & MCP check (user: publish [x] + Team Create [x])
 - [ ] P1 Destruction core — assets: hit/break SFX [ ]
 - [ ] P2 Bag, Crusher, money, HUD — assets: crusher/coin/UI SFX [ ]
 - [ ] P3 Persistence (user: API access [ ])
@@ -703,7 +703,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - Not yet in tree by design: Util.ToolStats (P4), ProjectileFX (P7), Squad* remotes (P8), onBreak hook table (P7, with TNT).
 - Next step: P1 — ToolService (UseTool validation §6.3 for hands, rate limit, server log counter) + ToolController (targeting raycast, outline, cooldown ring, sends UseTool).
 - After that: viewmodel arms + punch anim; FXController (debris pool, dust, shake, crack darkening, BlockFX listener); Players collision group; empty SFX/crack slots in Config/Assets.
-- Waiting on user: confirm Team Create is on (scripts survived a Studio reopen on 2026-11-05, so cloud saving works).
+- Waiting on user: —
 - Open asset requests: —
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
@@ -722,6 +722,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-04 — P1: BlueprintKit is a builder (`BlueprintKit.new(sx,sy,sz,sections)`, `:box/:floor/:hollowBox/:gableRoof/:windowRow/:door/:fillMaterial/:build`); later calls overwrite; mat=nil clears; build() sorts bottom-first.
 - 2026-11-04 — P1: StructureService API works on a structure (instance.structures[1]), not the instance: `build(instance, blueprintId, origin)`, `applyDamage(structure, attacker, hits, toolId)`, `destroy`. Section collapse lock = `structure.lockedSections[section]` (not per-cell `locked`). Cross-service calls via `StructureService.hooks` {canFit, addToBag, onBroken}, overwritten by PlayerStateService (P2) / MissionService (P5).
 - 2026-11-05 — User change: block size 4 → 2 studs (Grid.CELL_SIZE = 2). TestHut redrawn at the same 32×24-stud footprint (682 blocks); BlueprintKit:door now takes width/height. 4× more blocks per area → P6 economy pass must rescale material values/bag caps; P7+ block counts in §8.4 are still 4-stud estimates (≈×4); sledge radius in cells now covers half the studs, revisit in P4.
+- 2026-11-05 — Team Create confirmed: edit-mode DataModel has a NetworkClient with a replicator (only present in a Team Create session). Check: `game:FindFirstChildOfClass("NetworkClient") ~= nil` in Edit.
 - 2026-11-04 — MCP execute_luau in a playtest has its own require cache: test live services by parenting a temporary Script to ServerScriptService that prints results, then read the console.
 
 ### Ideas/backlog (not scheduled)
