@@ -716,7 +716,8 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - P5D built: StarterGui `Results` + `UI/Results` (in UIController SCREENS; Theme.Results). Opens on MissionState.results: title, 3 stars revealed in turn, Time/Best/Blocks/Phase bonuses/Completion reward, note (unlock name if that mission exists in Config/Missions, else FIRST CLEAR!), REPLAY (slot-1 leader only) / BACK TO HQ via MissionResultChoice; closes on rebuilding/left. Verified (playtest): complete → card text correct, replay → rebuilding→building→playing, hub → left + HubSpawn, zero errors. NOT checked: by eye, real button clicks (firesignal unavailable). Bonus/blocks show $0/0 in dev-complete runs (no breaks).
 - NOT built yet: arena decor, P5 asset batch, DoD playtest.
 - Dev profile now has m01_shed done 3★, +$270 and bag cap level 11 from the test run: use dev panel "Reset mission records" or "RESET ALL" for a clean profile.
-- Next step: P5 DoD 15-minute playtest (real breaks: hub → shed → 2 collapses → results → replay → hub; leave mid-mission) + user playtest request (eyeball hub, Mission Board, Results card, HUD).
+- P5 DoD mechanical playtest PASSED 2026-11-05 (scripted client, real UseTool breaks): start → 405 breaks → phase 1 + 2 collapses ($120 bonus) → complete 3★ $150 → Results card values right → replay rebuilds → LeaveMission → hub, Missions folder empty; zero errors. Not a literal 15-min hand playtest; nothing checked by eye.
+- Next step: user playtest (hub look, Mission Board click, Results card buttons, HUD, collapse feel; report issues). Then P5 asset batch request (collapse rumble, victory jingle, hub/mission music, ambient) and start P6 once the user signs off MVP.
 - Open asset requests: tooTough deferred to P7; P5 batch (collapse_warn/collapse_do slots exist, victory jingle, music, clock icon) after DoD.
 
 
