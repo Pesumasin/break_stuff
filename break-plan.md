@@ -683,7 +683,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - [x] P1 Destruction core — assets: hit/break SFX + crack images [ ] (requested 2026-11-05)
 - [x] P2 Bag, Crusher, money, HUD — assets: crusher/coin/UI SFX [x] (DoD passed 2026-11-05; integrated 2026-11-05)
 - [x] P3 Persistence (user: API access [x]) (DoD passed 2026-11-05)
-- [x] P4 Tools, shop, upgrades (mechanics DoD passed 2026-11-05; user feel check pending) — assets: swing SFX, icons (opt) [ ] (requested 2026-11-05)
+- [x] P4 Tools, shop, upgrades (mechanics DoD passed 2026-11-05; user feel check pending) — assets: swing SFX + icons [x] (integrated 2026-11-05)
 - [ ] P5 Hub, missions, phased collapse → **MVP** — assets: collapse, music, jingle [ ]
 - [ ] P6 Feel, performance, balance
 - [ ] P7 Content expansion I
@@ -703,8 +703,9 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - Verified (playtest): buy pickaxe/sledge/upgrades/capacity with exact costs; owned/funds/unknown/args/rate rejections; equip + junk equip dropped; tools/cap persist across stop/replay; hotbar + all 3 shop tabs by screenshot; sledge real-remote hit on the hut: 24 expected = 24 broken, 0 outside radius, bag +24; AoE preview boxes render; zero console errors.
 - Not verified: E-prompt open, shop button clicks/hover (MCP mouse can't reach the GUI), keys 1–3/wheel with real input, pickaxe hold-repeat live, ui_click by ear, swing animation + sledge size by eye, far-from-shop rejection.
 - Dev profile now owns pickaxe + sledge (+upgrades, cap level 2, ~$1.2K) from testing; no reset API yet.
-- Next step: user feel-checks P4 and gives swing SFX ids (§14 batch below), then P5 Hub, mission flow, phased collapse (read §17 P5, §8, §9 first).
-- Open asset requests: swing SFX per tool (hands/pickaxe/sledge), optional tool icons; tooTough deferred to P7.
+- P4 assets integrated (2026-11-05): swing_pickaxe, swing_sledge (6/6 pooled, loaded; replace the whiff on those tools; hands keep `miss`), icon_hands (scale 0.8) / icon_pickaxe / icon_sledge on hotbar slots + shop rows (decals resolved to image ids). Not verified by ear.
+- Next step: user feel-checks P4 (manual checklist in last report), then P5 Hub, mission flow, phased collapse (read §17 P5, §8, §9 first).
+- Open asset requests: tooTough deferred to P7.
 
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
@@ -747,3 +748,4 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-05 — P4: added `StateController` (client), `Util/TokenBucket`, `Util/ToolStats`; StateSync is also C→S (empty) to request a snapshot because the client may start after the server's first push. Equipped tool now lives in PlayerStateService (persisted in data.equipped).
 - 2026-11-05 — P4: hold tools repeat while Attack is held (client loop at the upgraded cooldown); `Shop.open(tab?)` kept as public API (tests, FTUE). MCP mouse/keyboard input can't drive the GUI/prompt here → manual checklist for the user. A client `require` from MCP has its own cache: test client modules via a temporary LocalScript under PlayerScripts.
 - 2026-11-05 — P4: UI frames sized with UIAspectRatioConstraint need a non-zero height scale (zero collapses to 0×0): Hotbar Size (0.2,1), shop rows (1,1).
+- 2026-11-05 — P4 assets: hands have no swing slot (user: reuse `miss` for a missed punch); pickaxe/sledge swing sounds play on every attack instead of `miss`. Icons carry a per-icon `scale` in Config/Assets.Images (hands 0.8).
