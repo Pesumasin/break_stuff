@@ -751,3 +751,4 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-05 — P4: UI frames sized with UIAspectRatioConstraint need a non-zero height scale (zero collapses to 0×0): Hotbar Size (0.2,1), shop rows (1,1).
 - 2026-11-05 — P4 assets: hands have no swing slot (user: reuse `miss` for a missed punch); pickaxe/sledge swing sounds play on every attack instead of `miss`. Icons carry a per-icon `scale` in Config/Assets.Images (hands 0.8).
 - 2026-11-05 — P4: heavy tools can set `impactDelay` in Tools; ToolController.Attacked(tool) = swing start, ToolController.Impacted(tool, target, hitPos) = landing (FX spark/hit/miss sounds listen to it). Server cooldown unchanged (sledge 0.85 s > delay).
+- 2026-11-05 — User: sell_clang volume 0.7 → 0.35 (50%).
