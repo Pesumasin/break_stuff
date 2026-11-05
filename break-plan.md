@@ -180,7 +180,7 @@ Every C→S handler: `typeof` check all args, reject NaN/inf vectors, per-player
 ## 5. Destruction system
 
 ### 5.1 Grid model **[D]**
-- Block size **2×2×2 studs** (user change 2026-11-05; was 4). Structures are axis-aligned on a grid anchored at an `origin` CFrame (position only, no rotation in the MVP).
+- Block size **1×1×1 stud** (user change 2026-11-05: 4 → 2 → 1). Blueprints are drawn at human scale: 1 cell = 1 stud, a character is ~5 studs tall (storey ≈ 9 studs, door 3×7, window 3×4). Structures are axis-aligned on a grid anchored at an `origin` CFrame (position only, no rotation in the MVP).
 - A structure is a server-side table:
   ```lua
   Structure = {
@@ -251,11 +251,11 @@ Breaking under collapse lock: a section in its 1 s collapse warning is `locked` 
 ### 5.7 Performance plan **[D]**
 | Risk | Mitigation |
 |---|---|
-| Part count | 2-stud blocks; hollow blueprints (walls 1 thick, floors), MVP ≤ 1,500 blocks/structure, later ≤ 6,000 spawned. For solid/large structures (P6/P7 if profiling demands): **surface-only spawning**. A cell only gets a Part when at least one of its 6 neighbours is empty. When a block breaks, spawn Parts for newly exposed neighbours. The grid already holds every cell, so this is a local change in StructureService. |
+| Part count | 1-stud blocks; hollow blueprints (walls 1 thick, floors), MVP ≤ 1,500 blocks/structure, later ≤ 6,000 spawned. For solid/large structures (P6/P7 if profiling demands): **surface-only spawning**. A cell only gets a Part when at least one of its 6 neighbours is empty. When a block breaks, spawn Parts for newly exposed neighbours. The grid already holds every cell, so this is a local change in StructureService. |
 | Spawn hitches | ≤300 parts/frame batching (§5.2). |
 | Network | Per-frame batched buffers, members only, no attributes per block, no physics parts replicated for FX. |
 | Physics | Intact blocks anchored. All debris and collapse chunks client-only, pooled and capped. Server simulates nothing physical for destruction. Projectiles are kinematic raycasts (§6.4). |
-| Collapse | Chunk collapse cells into 2×2×2-cell clumps (4-stud cubes). Cap 150 physics bodies per collapse; overflow becomes dust bursts plus a quick shrink. Bodies fade out by 4 s. |
+| Collapse | Chunk collapse cells into 4×4×4-cell clumps (4-stud cubes, `FX.collapse.clump`). Cap 150 physics bodies per collapse; overflow becomes dust bursts plus a quick shrink. Bodies fade out by 4 s. |
 | Particles/sounds | Pools, `Emit()` not continuous emitters, concurrency caps. |
 | UI | Event-driven updates via attribute signals. No per-frame text updates except active tweens and the objective bar while it animates. |
 | Server CPU | Grid ops are O(cells affected). Target: StructureService + MissionService < 1.5 ms/frame under a rocket spam test (MicroProfiler / `debug.profilebegin` labels). |
@@ -493,7 +493,7 @@ All of §6.3, plus a membership check on every structure op. A player can only t
 
 **Environment**: parts-based chunky terrain (no smooth Terrain), plateau steps of 4 studs. **Ground blocks are two-tone**: a dirt-coloured body plus a thin (0.8-stud) grass-green cap part on top (static decoration only; destructible blocks stay one Part each), blocky trees (brown trunk plus 2–3 green cubes), fences, cones, barrels. Lighting: `Lighting.Technology=ShadowMap`, bright midday, Atmosphere density 0.25 with a light blue haze, ColorCorrection saturation +0.15 / contrast +0.05, subtle Bloom (intensity 0.4, threshold 0.95). No realism, no grime.
 
-**Structures/blocks**: 2-stud cube grid, SmoothPlastic, patterned noise colour blotches plus slight per-block jitter (§5.2), dark crack overlays on damaged blocks, rubble cubes that settle briefly, readable silhouettes (gable roofs, big windows, chimneys, flags). Details are made of blocks too (a door = 2×3 cells of a different colour). Every structure has at least 3 materials for visual and economic variety.
+**Structures/blocks**: 1-stud cube grid, SmoothPlastic, patterned noise colour blotches plus slight per-block jitter (§5.2), dark crack overlays on damaged blocks, rubble cubes that settle briefly, readable silhouettes (gable roofs, big windows, chimneys, flags). Details are made of blocks too (a door = 3×7 cells of a different colour). Every structure has at least 3 materials for visual and economic variety.
 
 **Equipment**: oversized, toy-like proportions (head 1.5× realistic), 2–3 colours each, bold primary accent (pickaxe: wood handle, grey head with yellow band; sledge: red head; chainsaw: orange body; rocket: green tube with yellow stripes; laser: white/cyan sci-fi). Built from Parts first. Meshes only via §14.
 
@@ -695,7 +695,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 ### Current state (overwrite every task; keep under ~15 lines)
 - Updated: 2026-11-05 by Opus (implementation)
-- Phase / task: **P1 DoD passed** (2026-11-05). Done: BlueprintKit, TestHut (682 cells), StructureService, minimal MissionService (dev auto-instance), ToolService (hands), ToolController, FXController, ViewmodelController.
+- Phase / task: **P1 DoD passed** (2026-11-05). Done: BlueprintKit, TestHut (1,032 cells at 1-stud blocks, 21×15-stud human-scale cottage, door faces +Z/spawn), StructureService, minimal MissionService (dev auto-instance), ToolService (hands), ToolController, FXController, ViewmodelController.
 - Built: Server ORDER = StructureService, MissionService, ToolService. Client ORDER = Input, Camera, Tool, FX, Viewmodel, UI. FXController: BlockFX listener, 200-part debris pool (`workspace.ClientDebris`), dust/spark emitters, crack darkening, pooled sounds (silent, ids empty), `CameraController.shake`. ViewmodelController clones `Assets/ToolModels/<id>` (Tools.viewmodel) to the camera; side Models `Right`/`Left` alternate punches; idle/walk bob, turn sway; reloads on `Equipped` change. `Assets/ToolModels/hands` = 2 sides x (Glove + Sleeve), colours Theme.Viewmodel. Swing timings in Tools rows (`swing`), offsets in FX.viewmodel.
 - Verified (DoD playtest): all 682 TestHut blocks broken via real UseTool remote (810 accepted hits); debris pool 200 total, max 34 active, 0 active after drain, 0 stray; spam 60 shots/3.5 s → 12 accepted (= 0.2975 s cooldown), 48 `cooldown`; fuzz 15 bad arg sets → 14 `args` + 1 `notMember` (Terrain); junk on other remotes harmless. Zero console errors.
 - P1 sounds integrated (2026-11-05): hit_* (brick+roof share one), break_plank/glass/brick, new `miss` slot (whiff on attacks with no block). All 8 ids load; miss + hit_roof played on real clicks; break_plank/brick/glass played via server BlockFX.
@@ -704,7 +704,8 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - Next step: P2 PlayerStateService (attributes Money/BagCount/BagCap, bag ops, hooks canFit/addToBag).
 - After that: rest of P2 (D3 full-bag clamp + toast + beam, Crusher + SellFX, HUD money/bag/toasts).
 - break_roof reuses the brick break sound (user). Sound pools are now created and preloaded at FXController.start (fixes the first-hit audio delay the user reported); all 9 pools 6/6 loaded before the first hit.
-- Waiting on user: confirm the first-hit delay is gone; quick hands-on feel check.
+- 1-stud switch verified (2026-11-05): RunTests 11/11, 1,032 parts spawn, real-click breaks + debris OK, zero errors. The P1 DoD numbers above were measured on the old 682-block 2-stud hut.
+- Waiting on user: confirm the first-hit delay is gone; hands-on feel check of 1-stud blocks (viewmodel arms may now look oversized).
 - Open asset requests: none (tooTough deferred to P7).
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
@@ -734,6 +735,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-05 — P1 DoD test harness: client fires UseTool while pinning the HRP via Heartbeat CFrame (an Anchored HRP set on the client doesn't replicate → all `range` drops); remaining `range` drops (591) were teleport-replication lag, every block retried and broke. Long tests: task.spawn the loop on the client and poll `_G` stats (MCP calls time out ~60 s).
 - 2026-11-05 — P1 assets from user: new SFX slot `miss` (Config/Assets) played by FXController.onAttacked when the attack hits no block (also world parts like the ground). hit_brick and hit_roof share one sound. break_brick clip is 3.1 s (long tail; fine while pooled ×6).
 - 2026-11-05 — User: 4 crack stages (FX.crackStages 4, crackDarken 0.08 → 0.06), stage rule in §5.5. User gave Decal ids (asset type 13); Textures need the Image id → resolved via InsertService:LoadAsset(decalId) → Decal.Texture. Always check AssetTypeId when the user gives image ids.
+- 2026-11-05 — User change: block size 2 → 1 stud (8 per old block), TestHut smaller and human-scale (21×15 footprint, 9-stud walls, 1 cell thick → 1,032 blocks). Scaled with it: FX.colorNoise.scale 0.18 → 0.09 (same blotch size in studs), debris 0.4–0.8, shard 0.1, dust 0.6–1.5, collapse clump 4 cells. Economy origin (-10.5, 0.8, -43.5). Tool ranges (studs) unchanged; sledge r=1.5 cells is now tiny → set in studs-equivalent in P4. §8.4 block counts are still 4-stud estimates.
 
 ### Ideas/backlog (not scheduled)
 - Hungry Rock Monster crusher variant (P13 cosmetic).
