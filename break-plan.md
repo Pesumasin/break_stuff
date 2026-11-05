@@ -767,3 +767,4 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 - 2026-11-05 — P5B: HUD owns mission UI (objective, timer, banner, fade) via StateController.MissionChanged; Notify "PhaseDemolished"(phase, bonus) is a banner, not a toast. Collapse clumps use pooled debris parts (may evict break rubble). Server pushes MissionState "complete" at once so the timer freezes at the true time.
 - 2026-11-05 — User: dev rows startMission/leaveMission (MissionService.devStart/devLeave; DevActions row field `travel` = fade + close panel). collapse_warn asset integrated.
+- 2026-11-05 — User: collapse comes later. m01_shed threshold 0.20 → 0.35 (Config/Missions; per-mission, §8.1 default text still says 0.20; FTUE copy "Smash 20%" in P6 must follow the mission value). Not playtest-verified by feel.
