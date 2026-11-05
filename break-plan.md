@@ -698,11 +698,12 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - Phase / task: **P1 DoD passed** (2026-11-05). Done: BlueprintKit, TestHut (682 cells), StructureService, minimal MissionService (dev auto-instance), ToolService (hands), ToolController, FXController, ViewmodelController.
 - Built: Server ORDER = StructureService, MissionService, ToolService. Client ORDER = Input, Camera, Tool, FX, Viewmodel, UI. FXController: BlockFX listener, 200-part debris pool (`workspace.ClientDebris`), dust/spark emitters, crack darkening, pooled sounds (silent, ids empty), `CameraController.shake`. ViewmodelController clones `Assets/ToolModels/<id>` (Tools.viewmodel) to the camera; side Models `Right`/`Left` alternate punches; idle/walk bob, turn sway; reloads on `Equipped` change. `Assets/ToolModels/hands` = 2 sides x (Glove + Sleeve), colours Theme.Viewmodel. Swing timings in Tools rows (`swing`), offsets in FX.viewmodel.
 - Verified (DoD playtest): all 682 TestHut blocks broken via real UseTool remote (810 accepted hits); debris pool 200 total, max 34 active, 0 active after drain, 0 stray; spam 60 shots/3.5 s → 12 accepted (= 0.2975 s cooldown), 48 `cooldown`; fuzz 15 bad arg sets → 14 `args` + 1 `notMember` (Terrain); junk on other remotes harmless. Zero console errors.
-- Not verified: camera shake / walk bob / sway by eye; sounds (no ids).
+- P1 sounds integrated (2026-11-05): hit_* (brick+roof share one), break_plank/glass/brick, new `miss` slot (whiff on attacks with no block). All 8 ids load; miss + hit_roof played on real clicks; break_plank/brick/glass played via server BlockFX.
+- Not verified: camera shake / walk bob / sway by eye; hit_plank/glass/brick by real click (same code path as hit_roof).
 - Next step: P2 PlayerStateService (attributes Money/BagCount/BagCap, bag ops, hooks canFit/addToBag).
 - After that: rest of P2 (D3 full-bag clamp + toast + beam, Crusher + SellFX, HUD money/bag/toasts).
-- Waiting on user: P1 asset ids (and a quick hands-on feel check).
-- Open asset requests: P1 batch — break_plank/roof/glass/brick, crack1-3 (required); hit_* (optional, one shared sound ok). tooTough deferred to P7 (no tier gating before then).
+- Waiting on user: break_roof id; whether crack overlay images are wanted (user said "no crack sound effects" — ambiguous); quick hands-on feel check.
+- Open asset requests: break_roof (silent until given); crack1-3 images (darkening placeholder meanwhile). tooTough deferred to P7.
 
 ## 20. Decision log & notes (Sonnet appends; keep entries one line)
 - 2026-11-03 — Plan created (Opus). Interview decisions D1–D11 recorded in §2.
@@ -729,6 +730,7 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-05 — P1 viewmodel: arms = orange sleeves (Theme action) + yellow gloves (Theme primary), from the reference arms style; "procedural spring" implemented as exponential smoothing for sway plus piecewise swing curves (no spring sim). Punches alternate only when the model has both `Right` and `Left` sides.
 
 - 2026-11-05 — P1 DoD test harness: client fires UseTool while pinning the HRP via Heartbeat CFrame (an Anchored HRP set on the client doesn't replicate → all `range` drops); remaining `range` drops (591) were teleport-replication lag, every block retried and broke. Long tests: task.spawn the loop on the client and poll `_G` stats (MCP calls time out ~60 s).
+- 2026-11-05 — P1 assets from user: new SFX slot `miss` (Config/Assets) played by FXController.onAttacked when the attack hits no block (also world parts like the ground). hit_brick and hit_roof share one sound. break_brick clip is 3.1 s (long tail; fine while pooled ×6).
 
 ### Ideas/backlog (not scheduled)
 - Hungry Rock Monster crusher variant (P13 cosmetic).
