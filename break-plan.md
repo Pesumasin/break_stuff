@@ -751,3 +751,4 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - Rebirth/prestige, daily contracts, leaderboards (stats already saved).
 - 2026-11-05 — P2 assets: added `sell_clang` slot (user request), played at each jaw close alongside sell_chomp; `ui_click` slot added, wiring deferred to first UI buttons (P4).
 - 2026-11-05 — P3: DataService save record is {data, lock={jobId,time}}; jobId = game.JobId or a GUID in Studio. Probe (GetAsync 'probe') at init decides real vs in-memory mode. Test hook: DataService.forceFail = N makes the next N store calls throw.
+- 2026-11-05 — P3 fix: after a Studio stop the old lock (other jobId) made the next load wait 15 s, so the HUD showed defaults ("Bag 0/1", full). Now Studio steals locks at once (LOAD_STEAL_AFTER=0) and the HUD hides the bag pill until BagCap exists.
