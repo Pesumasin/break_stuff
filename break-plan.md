@@ -695,12 +695,13 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 
 ### Current state (overwrite every task; keep under ~15 lines)
 - Updated: 2026-11-05 by Opus (implementation)
-- Phase / task: P1 in progress. Done: BlueprintKit, TestHut (682 cells, 2-stud grid), StructureService, minimal MissionService (dev auto-instance), ToolService (hands), ToolController (target raycast, outline, cooldown ring).
-- Built: Server ORDER = StructureService, MissionService, ToolService. Client ORDER = Input, Camera, Tool, UI. InputController action `Attack` (MouseButton1). StarterGui.HUD.CooldownRing (shrinking ring, Theme style CooldownRing). Theme.Outline. ToolService sets attribute Equipped="hands"; counters `ToolService.accepted/dropped[reason]`, DEBUG print every 10 s on change.
-- Verified (playtest): outline follows the crosshair; clicks break planks (hole through wall); fuzzed args dropped (args/notMember/range); 46 fast fires → 10 rate drops; ~30/s spam on one block → 1 accepted + cooldown drops. RunTests 11/11. Zero errors.
-- Half-done / unwired / untested: client ignores BlockFX (no debris/dust/shake/cracks yet); no viewmodel arms; no hit spark/sound. Characters not yet in `Players` collision group.
-- Next step: P1 — FXController: BlockFX listener, debris pool (3 s rubble), dust, break shake, crack darkening; Players/Debris collision groups on characters; empty SFX + crack image slots in Config/Assets.
-- After that: viewmodel arms + punch anim (ViewmodelController), then P1 DoD test (break all blocks, pool count stable) and the P1 asset request.
+- Phase / task: P1 in progress. Done: BlueprintKit, TestHut (682 cells), StructureService, minimal MissionService (dev auto-instance), ToolService (hands), ToolController, **FXController**.
+- Built: Server ORDER = StructureService, MissionService, ToolService. Client ORDER = Input, Camera, Tool, FX, UI. FXController: BlockFX listener, 200-part debris pool in `workspace.ClientDebris` (recycles oldest), per-material dust emitters + hit spark emitter on `workspace.Terrain` attachments, crack darkening (texture code path waits on ids), pooled sounds (silent while ids empty). `CameraController.shake(amp, dur)`. MissionService puts character parts in the `Players` collision group. Config/Assets has SFX hit_/break_<mat>, tooTough and Images crack1–3 (all id "").
+- Verified (playtest): break → 4–6 cubes (glass = shards) + dust; pieces linger then all return by 4 s; fake 60-break batch → pool capped at 200, drained to 0 after 5 s; brick hit 1 darkens 16% (stage 2), hit 2 breaks. Zero errors.
+- Not verified: camera shake visually (fires without error); sound playback (no ids yet).
+- Half-done / unwired / untested: no viewmodel arms / punch anim.
+- Next step: P1 — ViewmodelController: blocky arms on the camera with procedural punch anim (§6.5), hooked to ToolController.Attacked.
+- After that: P1 DoD test (break all blocks, pool count stable) and the P1 asset request (hit/break SFX per material, crack images).
 - Waiting on user: —
 - Open asset requests: —
 
@@ -723,6 +724,8 @@ Unanchored vehicle Model driven by constraints: `LinearVelocity` (MaxForce-limit
 - 2026-11-05 — Team Create confirmed: edit-mode DataModel has a NetworkClient with a replicator (only present in a Team Create session). Check: `game:FindFirstChildOfClass("NetworkClient") ~= nil` in Edit.
 - 2026-11-05 — P1: cooldown ring is a ring that shrinks onto the dot and fades (TweenService), not a radial sweep (radial needs half-mask frames; revisit in P6 polish if wanted). Hands attack on click only (no hold-repeat), per §6.1 input="click". ToolService checks cooldown before membership, so spam at a just-broken part logs as `cooldown` then `notMember`.
 - 2026-11-04 — MCP execute_luau in a playtest has its own require cache: test live services by parenting a temporary Script to ServerScriptService that prints results, then read the console.
+
+- 2026-11-05 — P1 FXController: shake is a position-only camera offset (default camera rebuilds position each frame, so no drift); break shake fires for every break record incl. other members' (filter by attackerSlot in P8). Pool exhaustion only recycles oldest (no particles-only fallback needed since recycling always succeeds). Hit spark + hit sound play locally on ToolController.Attacked; break/tooTough sounds come from BlockFX. Cracks find the part client-side with GetPartBoundsInBox at the cell centre (cosmetic only). Character collision group set in MissionService (moves to PlayerStateService in P2 if it fits better).
 
 ### Ideas/backlog (not scheduled)
 - Hungry Rock Monster crusher variant (P13 cosmetic).
